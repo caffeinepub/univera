@@ -214,12 +214,75 @@ export function Landing() {
 
   return (
     <div
-      className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10"
+      className="relative min-h-[100dvh] flex flex-col items-center justify-center px-4 py-10 overflow-hidden"
       style={{
         background:
           "linear-gradient(160deg, #f5f3ff 0%, #ede9fe 50%, #ddd6fe 100%)",
       }}
     >
+      {/* Animated ambient orbs */}
+      <motion.div
+        className="absolute w-64 h-64 rounded-full blur-3xl pointer-events-none"
+        style={{ background: "rgba(124,58,237,0.18)", top: "5%", left: "-8%" }}
+        animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
+        transition={{
+          duration: 14,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-72 h-72 rounded-full blur-3xl pointer-events-none"
+        style={{
+          background: "rgba(236,72,153,0.15)",
+          top: "15%",
+          right: "-10%",
+        }}
+        animate={{ x: [0, -30, 25, 0], y: [0, 30, -20, 0] }}
+        transition={{
+          duration: 18,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-56 h-56 rounded-full blur-3xl pointer-events-none"
+        style={{ background: "rgba(196,181,253,0.22)", top: "50%", left: "5%" }}
+        animate={{ x: [0, 20, -35, 0], y: [0, -25, 15, 0] }}
+        transition={{
+          duration: 20,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-64 h-64 rounded-full blur-3xl pointer-events-none"
+        style={{
+          background: "rgba(167,139,250,0.18)",
+          bottom: "10%",
+          right: "0%",
+        }}
+        animate={{ x: [0, -25, 30, 0], y: [0, -30, 20, 0] }}
+        transition={{
+          duration: 16,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-48 h-48 rounded-full blur-3xl pointer-events-none"
+        style={{
+          background: "rgba(236,72,153,0.12)",
+          bottom: "20%",
+          left: "20%",
+        }}
+        animate={{ x: [0, 30, -15, 0], y: [0, 20, -30, 0] }}
+        transition={{
+          duration: 12,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      />
       {/* Logo */}
       <motion.div
         initial={{ opacity: 0, y: -24 }}

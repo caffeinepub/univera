@@ -422,8 +422,8 @@ export function Signup() {
 
   const handleCompleteSignup = () => {
     setProfileBError("");
-    if (readyCount < 6) {
-      setProfileBError("Please upload all 6 photos.");
+    if (readyCount < 3) {
+      setProfileBError("Please upload at least 3 photos.");
       return;
     }
     const account = {
@@ -889,7 +889,7 @@ export function Signup() {
           </span>
         </div>
         <p className="text-xs mb-4 opacity-70" style={{ color: "#7c3aed" }}>
-          All 6 photos required. Add a caption or prompt answer.
+          Add 3–6 photos with a caption or prompt answer.
         </p>
         {profileBError && (
           <div
@@ -996,12 +996,12 @@ export function Signup() {
         <button
           type="button"
           onClick={handleCompleteSignup}
-          disabled={readyCount < 6}
+          disabled={readyCount < 3}
           data-ocid="signup.submit_button"
           className="w-full py-3 rounded-xl font-semibold text-white text-sm transition-opacity"
           style={{
             background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-            opacity: readyCount < 6 ? 0.5 : 1,
+            opacity: readyCount < 3 ? 0.5 : 1,
           }}
         >
           {readyCount < 6

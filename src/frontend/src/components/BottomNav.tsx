@@ -1,9 +1,8 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Heart, Home, LayoutGrid, MessageCircle, User } from "lucide-react";
+import { Flame, Heart, MessageCircle, User } from "lucide-react";
 
 const tabs = [
-  { path: "/home", icon: Home, label: "Home" },
-  { path: "/feed", icon: LayoutGrid, label: "Feed" },
+  { path: "/app", icon: Flame, label: "Swipe" },
   { path: "/matches", icon: Heart, label: "Likes" },
   { path: "/chat/m1", icon: MessageCircle, label: "Chat" },
   { path: "/profile", icon: User, label: "Profile" },
@@ -21,9 +20,9 @@ export function BottomNav() {
     >
       {tabs.map(({ path, icon: Icon, label }) => {
         const isActive =
-          current === path ||
+          (path === "/app" && current === "/app") ||
           (path === "/chat/m1" && current.startsWith("/chat")) ||
-          (path === "/home" && current === "/home");
+          (path !== "/app" && path !== "/chat/m1" && current === path);
         return (
           <button
             type="button"
