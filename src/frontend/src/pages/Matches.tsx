@@ -1,9 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle, Heart, Search, X } from "lucide-react";
+import { CheckCircle, Heart, Search, X, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { AdBanner } from "../components/AdBanner";
 import { BottomNav } from "../components/BottomNav";
+import { ImgWithFallback } from "../components/ImgWithFallback";
 import { MatchModal } from "../components/MatchModal";
 import { ProfileViewer } from "../components/ProfileViewer";
 import { useApp } from "../context/AppContext";
@@ -12,13 +13,23 @@ import type { Profile } from "../data/mockData";
 
 export function Matches() {
   const navigate = useNavigate();
-  const { matches, user, likesReceived, dismissLike, acceptLike } = useApp();
+  const {
+    matches,
+    user,
+    likesReceived,
+    dismissLike,
+    acceptLike,
+    blockedUsers,
+    planType,
+  } = useApp();
   const [tab, setTab] = useState<"matches" | "likes">("matches");
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [viewingMatchId, setViewingMatchId] = useState<string | null>(null);
   const [viewingIsMatched, setViewingIsMatched] = useState(false);
 
+  // Filter out blocked users
   const matchProfiles = matches
+    .filter((m) => !blockedUsers.includes(m.profileId))
     .map((m) => ({
       match: m,
       profile: PROFILES.find((p) => p.id === m.profileId),
@@ -48,9 +59,21 @@ export function Matches() {
   return (
     <div className="app-shell bg-app flex flex-col h-[100dvh]">
       <header className="glass-dark px-5 py-4 flex-shrink-0">
-        <h1 className="font-display text-2xl font-black text-gradient-violet mb-3">
-          Matches
-        </h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="font-display text-2xl font-black text-gradient-violet">
+            Matches
+          </h1>
+          {planType !== "free" && (
+            <span
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full text-white"
+              style={{
+                background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+              }}
+            >
+              <Zap size={11} fill="white" /> Priority ⚡
+            </span>
+          )}
+        </div>
 
         {/* Tabs */}
         <div
@@ -144,10 +167,11 @@ export function Matches() {
                 data-ocid={`matches.item.${i + 1}`}
               >
                 <div className="relative flex-shrink-0">
-                  <img
+                  <ImgWithFallback
                     src={profile.photo}
                     alt={profile.name}
                     className="w-14 h-14 rounded-full object-cover neon-border-violet"
+                    fallbackAvatar="🧑"
                   />
                   {profile.online && (
                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-background" />

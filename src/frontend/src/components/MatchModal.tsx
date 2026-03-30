@@ -1,31 +1,51 @@
 import { useNavigate } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { PROFILES } from "../data/mockData";
 
-interface Confetti {
+interface Particle {
   id: number;
   x: number;
+  y: number;
+  angle: number;
+  speed: number;
   color: string;
-  delay: number;
   size: number;
+  shape: "circle" | "rect" | "star";
 }
+
+const COLORS = [
+  "#7C3AED",
+  "#EC4899",
+  "#8B5CF6",
+  "#F59E0B",
+  "#22C55E",
+  "#3B82F6",
+  "#F97316",
+  "#E879F9",
+];
 
 export function MatchModal() {
   const { showMatchModal, matchedProfile, setMatchModal, addMatch } = useApp();
   const navigate = useNavigate();
-  const [confetti, setConfetti] = useState<Confetti[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
     if (showMatchModal) {
-      const pieces = Array.from({ length: 20 }, (_, i) => ({
+      const pieces: Particle[] = Array.from({ length: 64 }, (_, i) => ({
         id: i,
-        x: Math.random() * 100,
-        color: ["#7C3AED", "#EC4899", "#8B5CF6", "#F59E0B", "#22C55E"][i % 5],
-        delay: Math.random() * 1.5,
-        size: Math.random() * 8 + 6,
+        x: 40 + Math.random() * 20, // start near center
+        y: 45 + Math.random() * 10,
+        angle: (i / 64) * 360 + Math.random() * 20,
+        speed: 0.3 + Math.random() * 0.7,
+        color: COLORS[i % COLORS.length],
+        size: Math.random() * 10 + 5,
+        shape: ["circle", "rect", "star"][i % 3] as Particle["shape"],
       }));
-      setConfetti(pieces);
+      setParticles(pieces);
+    } else {
+      setParticles([]);
     }
   }, [showMatchModal]);
 
@@ -41,67 +61,211 @@ export function MatchModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+      style={{ background: "rgba(0,0,0,0.95)" }}
       data-ocid="match.modal"
     >
-      {confetti.map((c) => (
-        <div
-          key={c.id}
-          className="absolute top-0 animate-confetti_fall pointer-events-none rounded-sm"
-          style={{
-            left: `${c.x}%`,
-            width: c.size,
-            height: c.size,
-            backgroundColor: c.color,
-            animationDelay: `${c.delay}s`,
-          }}
-        />
-      ))}
+      {/* Burst particles */}
+      {particles.map((p) => {
+        const rad = (p.angle * Math.PI) / 180;
+        const dist = 180 + p.speed * 160;
+        const endX = Math.cos(rad) * dist;
+        const endY = Math.sin(rad) * dist + 120; // gravity
+        return (
+          <motion.div
+            key={p.id}
+            initial={{
+              x: 0,
+              y: 0,
+              opacity: 1,
+              scale: 1,
+              rotate: 0,
+            }}
+            animate={{
+              x: endX,
+              y: endY,
+              opacity: 0,
+              scale: 0.2,
+              rotate: Math.random() * 720 - 360,
+            }}
+            transition={{
+              duration: 1.4 + p.speed * 0.8,
+              delay: Math.random() * 0.3,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "45%",
+              width: p.size,
+              height: p.shape === "rect" ? p.size * 0.5 : p.size,
+              backgroundColor: p.color,
+              borderRadius:
+                p.shape === "circle" ? "50%" : p.shape === "rect" ? 2 : 0,
+              clipPath:
+                p.shape === "star"
+                  ? "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"
+                  : undefined,
+              marginLeft: -(p.size / 2),
+              marginTop: -(p.size / 2),
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          />
+        );
+      })}
 
-      <div className="text-center px-8">
-        <div className="text-5xl font-display font-black text-gradient-violet mb-2">
-          It's a Match! 🎉
-        </div>
-        <p className="text-muted-foreground mb-8">
-          You and {matchedProfile.name} liked each other
-        </p>
+      <div className="relative text-center px-8 z-10">
+        {/* Pulsing rings behind photos */}
+        <div className="relative flex justify-center items-center mb-10">
+          {/* Ring animations */}
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: 220,
+              height: 220,
+              border: "2px solid rgba(124,58,237,0.4)",
+            }}
+            animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+            transition={{
+              duration: 2.2,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+            }}
+          />
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: 260,
+              height: 260,
+              border: "2px solid rgba(236,72,153,0.3)",
+            }}
+            animate={{ scale: [1, 1.25, 1], opacity: [0.4, 0, 0.4] }}
+            transition={{
+              duration: 2.2,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+              delay: 0.4,
+            }}
+          />
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: 300,
+              height: 300,
+              border: "1px solid rgba(139,92,246,0.2)",
+            }}
+            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0, 0.3] }}
+            transition={{
+              duration: 2.2,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+              delay: 0.8,
+            }}
+          />
 
-        <div className="flex justify-center items-center gap-4 mb-10">
-          <div className="w-28 h-28 rounded-full overflow-hidden neon-border-pink">
+          {/* Photos */}
+          <motion.div
+            initial={{ x: -40, opacity: 0, scale: 0.8 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            transition={{
+              delay: 0.15,
+              type: "spring",
+              stiffness: 280,
+              damping: 22,
+            }}
+            className="w-28 h-28 rounded-full overflow-hidden"
+            style={{
+              border: "3px solid #EC4899",
+              boxShadow: "0 0 20px rgba(236,72,153,0.5)",
+            }}
+          >
             <img
               src={myPhoto}
               alt="You"
               className="w-full h-full object-cover"
             />
-          </div>
-          <div className="text-4xl animate-pulse_glow">💜</div>
-          <div className="w-28 h-28 rounded-full overflow-hidden neon-border-violet">
+          </motion.div>
+
+          <motion.div
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 1.4, repeat: Number.POSITIVE_INFINITY }}
+            className="text-4xl mx-3 z-10"
+          >
+            💜
+          </motion.div>
+
+          <motion.div
+            initial={{ x: 40, opacity: 0, scale: 0.8 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            transition={{
+              delay: 0.15,
+              type: "spring",
+              stiffness: 280,
+              damping: 22,
+            }}
+            className="w-28 h-28 rounded-full overflow-hidden"
+            style={{
+              border: "3px solid #7C3AED",
+              boxShadow: "0 0 20px rgba(124,58,237,0.5)",
+            }}
+          >
             <img
               src={matchedProfile.photo}
               alt={matchedProfile.name}
               className="w-full h-full object-cover"
             />
-          </div>
+          </motion.div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleMessage}
-          className="w-full py-4 rounded-2xl font-bold text-lg text-white mb-3 shadow-btn-violet"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}
-          data-ocid="match.confirm_button"
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
         >
-          💬 Send Message
-        </button>
-        <button
-          type="button"
-          onClick={() => setMatchModal(null)}
-          className="w-full py-3 rounded-2xl font-semibold text-muted-foreground glass-dark"
-          data-ocid="match.cancel_button"
-        >
-          Keep Swiping
-        </button>
+          <div
+            className="text-5xl font-display font-black mb-2"
+            style={{
+              background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            It's a Match! 🎉
+          </div>
+          <p className="text-white/70 mb-8">
+            You and {matchedProfile.name} liked each other
+          </p>
+
+          <button
+            type="button"
+            onClick={handleMessage}
+            className="w-full py-4 rounded-2xl font-bold text-lg text-white mb-3"
+            style={{
+              background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+              boxShadow: "0 4px 24px rgba(124,58,237,0.5)",
+            }}
+            data-ocid="match.confirm_button"
+          >
+            💬 Send Message
+          </button>
+          <button
+            type="button"
+            onClick={() => setMatchModal(null)}
+            className="w-full py-3 rounded-2xl font-semibold text-white/60"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+            data-ocid="match.cancel_button"
+          >
+            Keep Swiping
+          </button>
+        </motion.div>
       </div>
+
+      {/* AnimatePresence wrapper for mount */}
+      <AnimatePresence />
     </div>
   );
 }

@@ -49,6 +49,23 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const Match = IDL.Record({
+  'screenshotAttemptFlag' : IDL.Bool,
+  'matchCreatedTime' : Time,
+  'matchId' : IDL.Text,
+  'isMatched' : IDL.Bool,
+  'user1' : IDL.Principal,
+  'user2' : IDL.Principal,
+  'chatDeleted' : IDL.Bool,
+  'firstMessageSent' : IDL.Bool,
+});
+export const ChatMessage = IDL.Record({
+  'msgId' : IDL.Text,
+  'text' : IDL.Text,
+  'sentAt' : Time,
+  'matchId' : IDL.Text,
+  'senderUserId' : IDL.Principal,
+});
 export const FeedPost = IDL.Record({
   'id' : IDL.Text,
   'userName' : IDL.Text,
@@ -67,13 +84,24 @@ export const UserProfile = IDL.Record({
   'age' : IDL.Nat,
   'name' : IDL.Text,
   'isVerified' : IDL.Bool,
+  'gender' : IDL.Text,
   'photo' : IDL.Text,
+  'planType' : IDL.Text,
 });
 export const PostData = IDL.Record({
   'key' : IDL.Text,
   'didLike' : IDL.Bool,
   'post' : FeedPost,
   'likesCount' : IDL.Nat,
+});
+export const Report = IDL.Record({
+  'isReviewed' : IDL.Bool,
+  'reportedUserId' : IDL.Principal,
+  'reportedAt' : Time,
+  'reporterUserId' : IDL.Principal,
+  'details' : IDL.Text,
+  'reportId' : IDL.Text,
+  'reason' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
@@ -107,16 +135,54 @@ export const idlService = IDL.Service({
   'addComment' : IDL.Func([IDL.Text, Comment, IDL.Text], [], []),
   'addNotification' : IDL.Func([Notification, IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createMatch' : IDL.Func(
+      [IDL.Principal, IDL.Principal, IDL.Text],
+      [Match],
+      [],
+    ),
+  'createMessage' : IDL.Func(
+      [ChatMessage, IDL.Text],
+      [
+        IDL.Variant({
+          'message' : IDL.Opt(
+            IDL.Record({
+              'msgId' : IDL.Text,
+              'text' : IDL.Text,
+              'sentAt' : Time,
+              'matchId' : IDL.Text,
+              'senderUserId' : IDL.Principal,
+            })
+          ),
+        }),
+      ],
+      [],
+    ),
   'createNotifications' : IDL.Func(
       [IDL.Principal, NotificationType],
       [IDL.Text],
       [],
     ),
   'createPost' : IDL.Func([FeedPost, IDL.Text], [FeedPost], []),
+  'deleteChat' : IDL.Func([IDL.Text], [], []),
+  'deleteMatch' : IDL.Func([IDL.Text], [], []),
+  'flagScreenshotAttempt' : IDL.Func([IDL.Text], [], []),
+  'getBlockedUsers' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(IDL.Principal)],
+      ['query'],
+    ),
+  'getBlockingUsers' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(IDL.Principal)],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getComments' : IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
   'getLikes' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Principal)], ['query']),
+  'getMatch' : IDL.Func([IDL.Text], [IDL.Opt(Match)], ['query']),
+  'getMatches' : IDL.Func([], [IDL.Vec(Match)], ['query']),
+  'getMessages' : IDL.Func([IDL.Text], [IDL.Vec(ChatMessage)], ['query']),
   'getNotifications' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(Notification)],
@@ -124,16 +190,34 @@ export const idlService = IDL.Service({
     ),
   'getPosts' : IDL.Func([], [IDL.Vec(PostData)], ['query']),
   'getPostsCreatedToday' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
+  'getReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'isBlocked' : IDL.Func([IDL.Principal, IDL.Principal], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'likePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
   'markNotificationsRead' : IDL.Func([IDL.Principal], [], []),
+  'markReportReviewed' : IDL.Func([IDL.Text], [], []),
+  'reportUser' : IDL.Func(
+      [IDL.Text, IDL.Principal, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
   'resetDailyLimits' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'toggleBlock' : IDL.Func(
+      [IDL.Principal],
+      [
+        IDL.Variant({
+          'blockedSuccessfully' : IDL.Bool,
+          'unblockedSuccessfully' : IDL.Bool,
+        }),
+      ],
+      [],
+    ),
   'unlikePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
   'updatePostsCreatedToday' : IDL.Func([IDL.Principal], [], []),
 });
@@ -182,6 +266,23 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const Match = IDL.Record({
+    'screenshotAttemptFlag' : IDL.Bool,
+    'matchCreatedTime' : Time,
+    'matchId' : IDL.Text,
+    'isMatched' : IDL.Bool,
+    'user1' : IDL.Principal,
+    'user2' : IDL.Principal,
+    'chatDeleted' : IDL.Bool,
+    'firstMessageSent' : IDL.Bool,
+  });
+  const ChatMessage = IDL.Record({
+    'msgId' : IDL.Text,
+    'text' : IDL.Text,
+    'sentAt' : Time,
+    'matchId' : IDL.Text,
+    'senderUserId' : IDL.Principal,
+  });
   const FeedPost = IDL.Record({
     'id' : IDL.Text,
     'userName' : IDL.Text,
@@ -200,13 +301,24 @@ export const idlFactory = ({ IDL }) => {
     'age' : IDL.Nat,
     'name' : IDL.Text,
     'isVerified' : IDL.Bool,
+    'gender' : IDL.Text,
     'photo' : IDL.Text,
+    'planType' : IDL.Text,
   });
   const PostData = IDL.Record({
     'key' : IDL.Text,
     'didLike' : IDL.Bool,
     'post' : FeedPost,
     'likesCount' : IDL.Nat,
+  });
+  const Report = IDL.Record({
+    'isReviewed' : IDL.Bool,
+    'reportedUserId' : IDL.Principal,
+    'reportedAt' : Time,
+    'reporterUserId' : IDL.Principal,
+    'details' : IDL.Text,
+    'reportId' : IDL.Text,
+    'reason' : IDL.Text,
   });
   
   return IDL.Service({
@@ -240,16 +352,54 @@ export const idlFactory = ({ IDL }) => {
     'addComment' : IDL.Func([IDL.Text, Comment, IDL.Text], [], []),
     'addNotification' : IDL.Func([Notification, IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createMatch' : IDL.Func(
+        [IDL.Principal, IDL.Principal, IDL.Text],
+        [Match],
+        [],
+      ),
+    'createMessage' : IDL.Func(
+        [ChatMessage, IDL.Text],
+        [
+          IDL.Variant({
+            'message' : IDL.Opt(
+              IDL.Record({
+                'msgId' : IDL.Text,
+                'text' : IDL.Text,
+                'sentAt' : Time,
+                'matchId' : IDL.Text,
+                'senderUserId' : IDL.Principal,
+              })
+            ),
+          }),
+        ],
+        [],
+      ),
     'createNotifications' : IDL.Func(
         [IDL.Principal, NotificationType],
         [IDL.Text],
         [],
       ),
     'createPost' : IDL.Func([FeedPost, IDL.Text], [FeedPost], []),
+    'deleteChat' : IDL.Func([IDL.Text], [], []),
+    'deleteMatch' : IDL.Func([IDL.Text], [], []),
+    'flagScreenshotAttempt' : IDL.Func([IDL.Text], [], []),
+    'getBlockedUsers' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(IDL.Principal)],
+        ['query'],
+      ),
+    'getBlockingUsers' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(IDL.Principal)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getComments' : IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
     'getLikes' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Principal)], ['query']),
+    'getMatch' : IDL.Func([IDL.Text], [IDL.Opt(Match)], ['query']),
+    'getMatches' : IDL.Func([], [IDL.Vec(Match)], ['query']),
+    'getMessages' : IDL.Func([IDL.Text], [IDL.Vec(ChatMessage)], ['query']),
     'getNotifications' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(Notification)],
@@ -257,16 +407,38 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getPosts' : IDL.Func([], [IDL.Vec(PostData)], ['query']),
     'getPostsCreatedToday' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
+    'getReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'isBlocked' : IDL.Func(
+        [IDL.Principal, IDL.Principal],
+        [IDL.Bool],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'likePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
     'markNotificationsRead' : IDL.Func([IDL.Principal], [], []),
+    'markReportReviewed' : IDL.Func([IDL.Text], [], []),
+    'reportUser' : IDL.Func(
+        [IDL.Text, IDL.Principal, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'resetDailyLimits' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'toggleBlock' : IDL.Func(
+        [IDL.Principal],
+        [
+          IDL.Variant({
+            'blockedSuccessfully' : IDL.Bool,
+            'unblockedSuccessfully' : IDL.Bool,
+          }),
+        ],
+        [],
+      ),
     'unlikePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
     'updatePostsCreatedToday' : IDL.Func([IDL.Principal], [], []),
   });

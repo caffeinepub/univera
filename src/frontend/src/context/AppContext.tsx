@@ -19,11 +19,42 @@ import {
 } from "../data/mockData";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  type AvatarData,
+  DEFAULT_AVATAR,
+  getAvatarString,
+} from "../types/avatar";
 
 export interface PromptCardUser {
   prompt: string;
   answer: string;
 }
+
+export type PlanType = "free" | "monthly" | "yearly";
+
+const PLAN_LIMITS = {
+  free: {
+    swipesPerDay: 5,
+    superLikesPerCycle: 1,
+    adsPerDay: 3,
+    adLikesReward: 2,
+    boostsPerWeek: 0,
+  },
+  monthly: {
+    swipesPerDay: 10,
+    superLikesPerCycle: 1,
+    adsPerDay: 0,
+    adLikesReward: 0,
+    boostsPerWeek: 1,
+  },
+  yearly: {
+    swipesPerDay: 999,
+    superLikesPerCycle: 999,
+    adsPerDay: 0,
+    adLikesReward: 0,
+    boostsPerWeek: 4,
+  },
+};
 
 interface User {
   name: string;
@@ -105,6 +136,21 @@ function frontendNotiTypeToBackend(
   return NotificationType.likePrompt;
 }
 
+export function lsGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+export function lsSet(key: string, val: string) {
+  try {
+    localStorage.setItem(key, val);
+  } catch {
+    /* ignore */
+  }
+}
+
 interface AppContextType {
   user: User | null;
   setUser: (u: User | null) => void;
@@ -114,12 +160,26 @@ interface AppContextType {
   setMode: (m: AppMode) => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
+  // Plan system
+  planType: PlanType;
+  setPlanType: (plan: PlanType, expiryMs: number | null) => void;
+  dailySwipesUsed: number;
+  swipesLimit: number;
+  superLikesRemaining: number;
+  adsWatchedToday: number;
+  canWatchAd: boolean;
+  boostsUsedThisWeek: number;
+  boostsRemaining: number;
+  subscriptionExpiry: number | null;
+  nextSwipeResetIn: number;
+  nextSuperLikeResetIn: number;
+  // Legacy compat
   likesLeft: number;
   superLikesLeft: number;
+  adsWatched: number;
   consumeLike: () => boolean;
   consumeSuperLike: () => boolean;
   rewardLikes: (type: "likes" | "superlike", amount: number) => void;
-  adsWatched: number;
   incrementAdsWatched: () => void;
   matches: Match[];
   addMatch: (profileId: string) => void;
@@ -159,6 +219,27 @@ interface AppContextType {
     >,
   ) => void;
   postsCreatedToday: number;
+  upgradeReason: string | null;
+  setUpgradeReason: (r: string | null) => void;
+  boostActive: boolean;
+  boostExpiresAt: number | null;
+  activateBoost: () => void;
+  tutorialDone: boolean;
+  setTutorialDone: (v: boolean) => void;
+  // Safety features
+  blockedUsers: string[];
+  blockUser: (userId: string) => void;
+  reportedUsers: string[];
+  reportUser: (userId: string, reason: string, details: string) => void;
+  removeMatch: (matchId: string) => void;
+  deleteChat: (matchId: string) => void;
+  matchCreatedTimes: Record<string, number>;
+  // Avatar & chat personalization
+  avatarData: AvatarData | null;
+  setAvatarData: (data: AvatarData) => void;
+  avatarString: string;
+  chatThemes: Record<string, string>;
+  setChatTheme: (chatId: string, theme: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -172,25 +253,378 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const logout = () => setUserState(null);
   const [mode, setModeState] = useState<AppMode>("dating");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [likesLeft, setLikesLeft] = useState(5);
-  const [superLikesLeft, setSuperLikesLeft] = useState(1);
+
+  // ─── Plan / subscription state (persisted) ─────────────────────────────────
+  const [planType, setPlanTypeState] = useState<PlanType>(() => {
+    return (lsGet("univera_plan_type") as PlanType) ?? "free";
+  });
+  const [subscriptionExpiry, setSubscriptionExpiry] = useState<number | null>(
+    () => {
+      const v = lsGet("univera_plan_expiry");
+      return v ? Number(v) : null;
+    },
+  );
+  const [dailySwipesUsed, setDailySwipesUsed] = useState<number>(() => {
+    return Number(lsGet("univera_daily_swipes_used") ?? "0");
+  });
+  const [lastSwipeResetTime, setLastSwipeResetTime] = useState<number>(() => {
+    return Number(lsGet("univera_last_swipe_reset") ?? String(Date.now()));
+  });
+  const [adsWatchedToday, setAdsWatchedToday] = useState<number>(() => {
+    return Number(lsGet("univera_ads_watched_today") ?? "0");
+  });
+  const [lastAdResetTime, setLastAdResetTime] = useState<number>(() => {
+    return Number(lsGet("univera_last_ad_reset") ?? String(Date.now()));
+  });
+  const [superLikesRemaining, setSuperLikesRemaining] = useState<number>(() => {
+    const stored = lsGet("univera_super_likes_remaining");
+    if (stored !== null) return Number(stored);
+    const plan = (lsGet("univera_plan_type") as PlanType) ?? "free";
+    return plan === "yearly" ? 999 : 1;
+  });
+  const [lastSuperLikeReset, setLastSuperLikeReset] = useState<number>(() => {
+    return Number(lsGet("univera_last_super_like_reset") ?? String(Date.now()));
+  });
+  const [boostsUsedThisWeek, setBoostsUsedThisWeek] = useState<number>(() => {
+    return Number(lsGet("univera_boosts_used_this_week") ?? "0");
+  });
+  const [lastBoostReset, setLastBoostReset] = useState<number>(() => {
+    return Number(lsGet("univera_last_boost_reset") ?? String(Date.now()));
+  });
+
+  // Boost active state
+  const [boostActive, setBoostActive] = useState(false);
+  const [boostExpiresAt, setBoostExpiresAt] = useState<number | null>(null);
+
+  // Safety features
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
+    try {
+      return JSON.parse(lsGet("univera_blocked_users") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [reportedUsers, setReportedUsers] = useState<string[]>([]);
+
+  // matchCreatedTimes: track when each match was created
+  const [matchCreatedTimes, setMatchCreatedTimes] = useState<
+    Record<string, number>
+  >(() => {
+    // For INITIAL_MATCHES, set to 2 hours ago
+    const times: Record<string, number> = {};
+    for (const m of INITIAL_MATCHES) {
+      times[m.id] = Date.now() - 2 * 60 * 60 * 1000;
+    }
+    return times;
+  });
+
+  // Avatar & chat themes
+  const [avatarData, setAvatarDataState] = useState<AvatarData | null>(() => {
+    try {
+      const stored = lsGet("univera_avatar");
+      return stored ? JSON.parse(stored) : DEFAULT_AVATAR;
+    } catch {
+      return DEFAULT_AVATAR;
+    }
+  });
+
+  const setAvatarData = (data: AvatarData) => {
+    setAvatarDataState(data);
+    lsSet("univera_avatar", JSON.stringify(data));
+  };
+
+  const [chatThemes, setChatThemesState] = useState<Record<string, string>>(
+    () => {
+      try {
+        const stored = lsGet("univera_chat_themes");
+        return stored ? JSON.parse(stored) : {};
+      } catch {
+        return {};
+      }
+    },
+  );
+
+  const setChatTheme = (chatId: string, theme: string) => {
+    setChatThemesState((prev) => {
+      const next = { ...prev, [chatId]: theme };
+      lsSet("univera_chat_themes", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // ─── Other existing state ─────────────────────────────────────────────────
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
   const [currentProfileIndex, setCurrentProfileIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
-  const [adsWatched, setAdsWatched] = useState(0);
   const [likesReceived, setLikesReceived] =
     useState<LikeReceived[]>(MOCK_LIKES_RECEIVED);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsCreatedToday, setPostsCreatedToday] = useState(0);
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
+  const [tutorialDone, setTutorialDoneState] = useState(() => {
+    return lsGet("univera_tutorial_done") === "true";
+  });
+
+  // ─── Reset logic ─────────────────────────────────────────────────────────
+  const checkAndReset = useCallback(() => {
+    const now = Date.now();
+
+    // Check subscription expiry
+    if (subscriptionExpiry && now > subscriptionExpiry) {
+      setPlanTypeState("free");
+      lsSet("univera_plan_type", "free");
+      lsSet("univera_plan_expiry", "");
+      setSubscriptionExpiry(null);
+    }
+
+    // Reset swipes every 24h
+    if (now - lastSwipeResetTime > 86_400_000) {
+      setDailySwipesUsed(0);
+      lsSet("univera_daily_swipes_used", "0");
+      const ts = now;
+      setLastSwipeResetTime(ts);
+      lsSet("univera_last_swipe_reset", String(ts));
+    }
+
+    // Reset ads every 24h
+    if (now - lastAdResetTime > 86_400_000) {
+      setAdsWatchedToday(0);
+      lsSet("univera_ads_watched_today", "0");
+      const ts = now;
+      setLastAdResetTime(ts);
+      lsSet("univera_last_ad_reset", String(ts));
+    }
+
+    // Reset super likes
+    const currentPlan = (lsGet("univera_plan_type") as PlanType) ?? "free";
+    const superLikeCycle = currentPlan === "monthly" ? 86_400_000 : 604_800_000;
+    if (currentPlan !== "yearly" && now - lastSuperLikeReset > superLikeCycle) {
+      const newVal = PLAN_LIMITS[currentPlan].superLikesPerCycle;
+      setSuperLikesRemaining(newVal);
+      lsSet("univera_super_likes_remaining", String(newVal));
+      const ts = now;
+      setLastSuperLikeReset(ts);
+      lsSet("univera_last_super_like_reset", String(ts));
+    }
+
+    // Reset boosts weekly
+    if (now - lastBoostReset > 604_800_000) {
+      setBoostsUsedThisWeek(0);
+      lsSet("univera_boosts_used_this_week", "0");
+      const ts = now;
+      setLastBoostReset(ts);
+      lsSet("univera_last_boost_reset", String(ts));
+    }
+  }, [
+    lastSwipeResetTime,
+    lastAdResetTime,
+    lastSuperLikeReset,
+    lastBoostReset,
+    subscriptionExpiry,
+  ]);
+
+  // Run reset check on mount and every minute
+  useEffect(() => {
+    checkAndReset();
+    const t = setInterval(checkAndReset, 60_000);
+    return () => clearInterval(t);
+  }, [checkAndReset]);
+
+  // Load boost state from localStorage on mount
+  useEffect(() => {
+    const stored = lsGet("univera_boost_expires_at");
+    if (stored) {
+      const exp = Number(stored);
+      if (exp > Date.now()) {
+        setBoostActive(true);
+        setBoostExpiresAt(exp);
+      } else {
+        lsSet("univera_boost_expires_at", "");
+      }
+    }
+  }, []);
+
+  // Expire boost when timer runs out
+  useEffect(() => {
+    if (!boostActive || !boostExpiresAt) return;
+    const remaining = boostExpiresAt - Date.now();
+    if (remaining <= 0) {
+      setBoostActive(false);
+      setBoostExpiresAt(null);
+      lsSet("univera_boost_expires_at", "");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setBoostActive(false);
+      setBoostExpiresAt(null);
+      lsSet("univera_boost_expires_at", "");
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [boostActive, boostExpiresAt]);
+
+  // ─── Plan management ────────────────────────────────────────────────────────
+  const setPlanType = useCallback((plan: PlanType, expiryMs: number | null) => {
+    setPlanTypeState(plan);
+    lsSet("univera_plan_type", plan);
+    setSubscriptionExpiry(expiryMs);
+    lsSet("univera_plan_expiry", expiryMs ? String(expiryMs) : "");
+    // Reset counters
+    const limits = PLAN_LIMITS[plan];
+    setDailySwipesUsed(0);
+    lsSet("univera_daily_swipes_used", "0");
+    const newSuperLikes = plan === "yearly" ? 999 : limits.superLikesPerCycle;
+    setSuperLikesRemaining(newSuperLikes);
+    lsSet("univera_super_likes_remaining", String(newSuperLikes));
+    setBoostsUsedThisWeek(0);
+    lsSet("univera_boosts_used_this_week", "0");
+    // Update user isPro
+    setUserState((prev) => (prev ? { ...prev, isPro: plan !== "free" } : prev));
+  }, []);
+
+  // ─── Computed values ────────────────────────────────────────────────────────
+  const swipesLimit = PLAN_LIMITS[planType].swipesPerDay;
+  const canWatchAd = planType === "free" && adsWatchedToday < 3;
+  const boostsRemaining = Math.max(
+    0,
+    PLAN_LIMITS[planType].boostsPerWeek - boostsUsedThisWeek,
+  );
+  const nextSwipeResetIn = Math.max(
+    0,
+    86_400_000 - (Date.now() - lastSwipeResetTime),
+  );
+  const nextSuperLikeResetIn =
+    planType === "yearly"
+      ? 0
+      : (() => {
+          const cycle = planType === "monthly" ? 86_400_000 : 604_800_000;
+          return Math.max(0, cycle - (Date.now() - lastSuperLikeReset));
+        })();
+
+  // Legacy compat
+  const likesLeft = Math.max(0, swipesLimit - dailySwipesUsed);
+  const superLikesLeft = superLikesRemaining;
+  const adsWatched = adsWatchedToday;
+
+  // ─── Operations ─────────────────────────────────────────────────────────────
+  const consumeLike = (): boolean => {
+    checkAndReset();
+    if (planType === "yearly") return true;
+    if (dailySwipesUsed >= PLAN_LIMITS[planType].swipesPerDay) return false;
+    const next = dailySwipesUsed + 1;
+    setDailySwipesUsed(next);
+    lsSet("univera_daily_swipes_used", String(next));
+    return true;
+  };
+
+  const consumeSuperLike = (): boolean => {
+    checkAndReset();
+    if (planType === "yearly") return true;
+    if (superLikesRemaining <= 0) return false;
+    const next = superLikesRemaining - 1;
+    setSuperLikesRemaining(next);
+    lsSet("univera_super_likes_remaining", String(next));
+    return true;
+  };
+
+  const rewardLikes = (_type: "likes" | "superlike", amount: number) => {
+    // Give bonus likes by reducing dailySwipesUsed
+    const next = Math.max(0, dailySwipesUsed - amount);
+    setDailySwipesUsed(next);
+    lsSet("univera_daily_swipes_used", String(next));
+  };
+
+  const incrementAdsWatched = () => {
+    const next = adsWatchedToday + 1;
+    setAdsWatchedToday(next);
+    lsSet("univera_ads_watched_today", String(next));
+  };
+
+  const activateBoost = () => {
+    if (boostsRemaining <= 0 && planType === "free") return;
+    const exp = Date.now() + 5 * 60 * 60 * 1000; // 5 hours
+    setBoostActive(true);
+    setBoostExpiresAt(exp);
+    lsSet("univera_boost_expires_at", String(exp));
+    const newUsed = boostsUsedThisWeek + 1;
+    setBoostsUsedThisWeek(newUsed);
+    lsSet("univera_boosts_used_this_week", String(newUsed));
+  };
+
+  const setTutorialDone = (v: boolean) => {
+    setTutorialDoneState(v);
+    lsSet("univera_tutorial_done", String(v));
+  };
 
   const getCallerPrincipal = useCallback((): Principal => {
     if (identity) return identity.getPrincipal();
     return Principal.anonymous();
   }, [identity]);
+
+  // Safety features
+  const blockUser = useCallback(
+    (userId: string) => {
+      setBlockedUsers((prev) => {
+        if (prev.includes(userId)) return prev;
+        const next = [...prev, userId];
+        lsSet("univera_blocked_users", JSON.stringify(next));
+        return next;
+      });
+      if (actor) {
+        try {
+          actor.toggleBlock(Principal.fromText(userId));
+        } catch {
+          /* ignore invalid principal for mock data */
+        }
+      }
+    },
+    [actor],
+  );
+
+  const reportUser = useCallback(
+    (userId: string, reason: string, details: string) => {
+      setReportedUsers((prev) => {
+        if (prev.includes(userId)) return prev;
+        return [...prev, userId];
+      });
+      if (actor) {
+        const reportId = `r${Date.now()}`;
+        try {
+          actor.reportUser(
+            reportId,
+            Principal.fromText(userId),
+            reason,
+            details,
+          );
+        } catch {
+          /* ignore invalid principal for mock data */
+        }
+      }
+    },
+    [actor],
+  );
+
+  const removeMatch = useCallback(
+    (matchId: string) => {
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+      if (actor) {
+        actor.deleteMatch(matchId).catch(() => {});
+      }
+    },
+    [actor],
+  );
+
+  const deleteChat = useCallback(
+    (matchId: string) => {
+      if (actor) {
+        actor.deleteChat(matchId).catch(() => {});
+      }
+    },
+    [actor],
+  );
 
   // Load posts from backend
   const loadPosts = useCallback(async () => {
@@ -214,7 +648,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         comments: [],
         createdAt: formatTimeAgo(pd.post.createdAt),
       }));
-      // Sort newest first
       mapped.sort((a, b) => {
         const idA = Number(BigInt(a.id.replace(/[^0-9]/g, "") || "0"));
         const idB = Number(BigInt(b.id.replace(/[^0-9]/g, "") || "0"));
@@ -243,7 +676,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         timestamp: formatTimeAgo(n.timestamp),
         read: n.read,
       }));
-      // Sort newest first
       mapped.sort((a, b) => a.id.localeCompare(b.id) * -1);
       setNotifications(mapped);
     } catch (e) {
@@ -251,7 +683,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [actor, getCallerPrincipal]);
 
-  // Load posts/notifications on actor ready
   useEffect(() => {
     if (actor) {
       loadPosts();
@@ -310,42 +741,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("light", next === "light");
   };
 
-  const consumeLike = () => {
-    if (user?.isPro) return true;
-    if (likesLeft <= 0) {
-      setShowUpgradeModal(true);
-      return false;
-    }
-    setLikesLeft((p) => p - 1);
-    return true;
-  };
-
-  const consumeSuperLike = () => {
-    if (user?.isPro) return true;
-    if (superLikesLeft <= 0) {
-      setShowUpgradeModal(true);
-      return false;
-    }
-    setSuperLikesLeft((p) => p - 1);
-    return true;
-  };
-
-  const rewardLikes = (type: "likes" | "superlike", amount: number) => {
-    if (type === "likes") setLikesLeft((p) => p + amount);
-    else setSuperLikesLeft((p) => p + amount);
-  };
-
-  const incrementAdsWatched = () => setAdsWatched((p) => p + 1);
-
   const addMatch = (profileId: string) => {
+    const newMatchId = `m${Date.now()}`;
     const newMatch: Match = {
-      id: `m${Date.now()}`,
+      id: newMatchId,
       profileId,
       matchedAt: "Just now",
       lastMessage: "Say hello! 👋",
       unread: 0,
     };
     setMatches((prev) => [newMatch, ...prev]);
+    setMatchCreatedTimes((prev) => ({ ...prev, [newMatchId]: Date.now() }));
   };
 
   const advanceProfile = () =>
@@ -382,7 +788,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const likePost = useCallback(
     async (postId: string) => {
-      // Optimistic update
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId
@@ -423,7 +828,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         text,
         timestamp: "Just now",
       };
-      // Optimistic update
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId ? { ...p, comments: [...p.comments, newComment] } : p,
@@ -446,7 +850,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           commentId,
         );
       } catch (e) {
-        console.error("addComment backend failed", e);
+        console.error("addComment failed", e);
       }
     },
     [actor, user],
@@ -528,12 +932,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setMode,
         theme,
         toggleTheme,
+        // Plan
+        planType,
+        setPlanType,
+        dailySwipesUsed,
+        swipesLimit,
+        superLikesRemaining,
+        adsWatchedToday,
+        canWatchAd,
+        boostsUsedThisWeek,
+        boostsRemaining,
+        subscriptionExpiry,
+        nextSwipeResetIn,
+        nextSuperLikeResetIn,
+        // Legacy compat
         likesLeft,
         superLikesLeft,
+        adsWatched,
         consumeLike,
         consumeSuperLike,
         rewardLikes,
-        adsWatched,
         incrementAdsWatched,
         matches,
         addMatch,
@@ -559,6 +977,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addComment,
         createPost,
         postsCreatedToday,
+        upgradeReason,
+        setUpgradeReason,
+        boostActive,
+        boostExpiresAt,
+        activateBoost,
+        tutorialDone,
+        setTutorialDone,
+        // Safety
+        blockedUsers,
+        blockUser,
+        reportedUsers,
+        reportUser,
+        removeMatch,
+        deleteChat,
+        matchCreatedTimes,
+        // Avatar & chat personalization
+        avatarData,
+        setAvatarData,
+        avatarString: getAvatarString(avatarData),
+        chatThemes,
+        setChatTheme,
       }}
     >
       {children}

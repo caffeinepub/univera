@@ -13,7 +13,9 @@ import {
   useMotionValue,
 } from "motion/react";
 import { useRef, useState } from "react";
+import { useApp } from "../context/AppContext";
 import type { Profile } from "../data/mockData";
+import { ImgWithFallback } from "./ImgWithFallback";
 
 interface ProfileViewerProps {
   profile: Profile | null;
@@ -116,13 +118,17 @@ export function ProfileViewer({
   const x = useMotionValue(0);
   const sheetRef = useRef<HTMLDivElement>(null);
 
+  const { avatarString } = useApp();
+
   if (!profile) return null;
+
+  const mainPhoto = profile.photos?.[0]?.url ?? profile.photo;
+  const avatarOrDefault = avatarString || "🧑";
 
   const photos = profile.photos?.length
     ? profile.photos
     : [{ url: profile.photo, caption: profile.bio }];
 
-  // Build mixed feed: photo cards + prompt cards interspersed
   type FeedItem =
     | { type: "photo"; url: string; caption: string; idx: number }
     | {
@@ -143,7 +149,6 @@ export function ProfileViewer({
       caption: photo.caption,
       idx: i,
     });
-    // Insert a prompt card after every 2nd photo
     if ((i + 1) % 2 === 0 && promptPointer < prompts.length) {
       const p = prompts[promptPointer];
       feed.push({
@@ -156,7 +161,6 @@ export function ProfileViewer({
       promptPointer++;
     }
   });
-  // Append remaining prompt cards
   while (promptPointer < prompts.length) {
     const p = prompts[promptPointer];
     feed.push({
@@ -287,11 +291,34 @@ export function ProfileViewer({
               </div>
             </div>
 
-            {/* Feed */}
-            <div className="px-4 pt-4 pb-36 space-y-4">
-              {feed.map((item, feedIdx) => {
+            {/* Main profile photo */}
+            <div className="px-4 pt-4">
+              <div
+                className="rounded-2xl overflow-hidden relative"
+                style={{ aspectRatio: "3/4" }}
+              >
+                <ImgWithFallback
+                  src={mainPhoto}
+                  alt={profile.name}
+                  className="w-full h-full object-cover"
+                  fallbackAvatar={avatarOrDefault}
+                />
+              </div>
+              {photos[0]?.caption && (
+                <div className="mt-2 mb-3 px-1">
+                  <p className="text-gray-700 text-sm italic">
+                    "{photos[0].caption}"
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Feed (photos 2+ and prompts interspersed) */}
+            <div className="px-4 pt-2 pb-4 space-y-4">
+              {feed.slice(1).map((item, feedIdx) => {
                 if (item.type === "photo") {
                   const key = `photo-${item.idx}`;
+                  const isLocked = !isMatched && item.idx > 0;
                   return (
                     <motion.div
                       key={key}
@@ -302,14 +329,37 @@ export function ProfileViewer({
                       data-ocid={`profile.item.${item.idx + 1}`}
                     >
                       <div
-                        className="rounded-2xl overflow-hidden"
+                        className="rounded-2xl overflow-hidden relative"
                         style={{ aspectRatio: "3/4" }}
                       >
-                        <img
+                        <ImgWithFallback
                           src={item.url}
                           alt={`${profile.name} ${item.idx + 1}`}
                           className="w-full h-full object-cover"
+                          fallbackAvatar={avatarOrDefault}
+                          style={
+                            isLocked
+                              ? {
+                                  filter: "blur(18px)",
+                                  transform: "scale(1.05)",
+                                }
+                              : {}
+                          }
                         />
+                        {isLocked && (
+                          <div
+                            className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+                            style={{
+                              background: "rgba(91,33,182,0.45)",
+                              backdropFilter: "blur(2px)",
+                            }}
+                          >
+                            <span className="text-3xl">🔒</span>
+                            <p className="text-white font-bold text-sm">
+                              Match to unlock
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <div
                         className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3"
@@ -347,7 +397,6 @@ export function ProfileViewer({
                   );
                 }
 
-                // Prompt card
                 const key = `prompt-${item.promptIdx}`;
                 return (
                   <motion.div
@@ -428,9 +477,44 @@ export function ProfileViewer({
                   About
                 </h3>
                 <p className="text-gray-700 text-sm leading-relaxed">
-                  {profile.bio}
+                  {isMatched
+                    ? profile.bio
+                    : profile.bio.slice(0, 100) +
+                      (profile.bio.length > 100 ? "…" : "")}
                 </p>
               </div>
+
+              {/* Photos Gallery (all photos with captions) */}
+              {profile.photos && profile.photos.length > 0 && (
+                <div className="pb-2">
+                  <h3 className="text-sm font-semibold mb-3 text-purple-500 uppercase tracking-wider px-1">
+                    Photos
+                  </h3>
+                  <div className="space-y-3">
+                    {profile.photos.map((photo, index) => (
+                      <div
+                        key={photo.url || String(index)}
+                        className="rounded-2xl overflow-hidden"
+                        data-ocid={`profile.item.${index + 1}`}
+                      >
+                        <div className="relative aspect-square">
+                          <ImgWithFallback
+                            src={photo.url}
+                            alt={`Photo ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            fallbackAvatar={avatarOrDefault}
+                          />
+                        </div>
+                        {photo.caption && (
+                          <p className="text-sm text-gray-600 mt-2 px-1 pb-1">
+                            {photo.caption}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Interests — only shown when matched */}
               {isMatched && (

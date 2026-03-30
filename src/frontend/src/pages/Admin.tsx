@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Ban,
@@ -8,16 +10,62 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ADMIN_REPORTS, ADMIN_USERS } from "../data/mockData";
+import { useActor } from "../hooks/useActor";
 
-type Tab = "overview" | "users" | "reports";
+type Tab = "overview" | "users" | "reports" | "backend-reports";
 
 export function Admin() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
   const [users, setUsers] = useState(ADMIN_USERS);
   const [reports, setReports] = useState(ADMIN_REPORTS);
+  const { actor } = useActor();
+
+  // Backend reports
+  const [backendReports, setBackendReports] = useState<
+    Array<{
+      reportId: string;
+      reason: string;
+      details: string;
+      reportedAt: string;
+      isReviewed: boolean;
+    }>
+  >([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+
+  useEffect(() => {
+    if (tab !== "backend-reports" || !actor) return;
+    setReportsLoading(true);
+    actor
+      .getReports()
+      .then((raw) => {
+        setBackendReports(
+          raw.map((r) => ({
+            reportId: r.reportId,
+            reason: r.reason,
+            details: r.details,
+            reportedAt: new Date(
+              Number(r.reportedAt / 1_000_000n),
+            ).toLocaleString(),
+            isReviewed: r.isReviewed,
+          })),
+        );
+      })
+      .catch(console.error)
+      .finally(() => setReportsLoading(false));
+  }, [tab, actor]);
+
+  const markReviewed = async (reportId: string) => {
+    if (!actor) return;
+    await actor.markReportReviewed(reportId);
+    setBackendReports((prev) =>
+      prev.map((r) =>
+        r.reportId === reportId ? { ...r, isReviewed: true } : r,
+      ),
+    );
+  };
 
   const toggleVerified = (id: string) =>
     setUsers((p) =>
@@ -33,6 +81,13 @@ export function Admin() {
     setReports((p) =>
       p.map((r) => (r.id === id ? { ...r, status: "resolved" } : r)),
     );
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "users", label: "Users" },
+    { key: "reports", label: "Reports" },
+    { key: "backend-reports", label: "Live Reports" },
+  ];
 
   return (
     <div className="app-shell bg-app flex flex-col h-[100dvh]">
@@ -52,20 +107,20 @@ export function Admin() {
       </header>
 
       {/* Tabs */}
-      <div className="px-4 py-2 flex gap-2 glass-dark border-b border-border/50 flex-shrink-0">
-        {(["overview", "users", "reports"] as Tab[]).map((t) => (
+      <div className="px-4 py-2 flex gap-2 glass-dark border-b border-border/50 flex-shrink-0 overflow-x-auto no-scrollbar">
+        {TABS.map((t) => (
           <button
             type="button"
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-              tab === t
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+              tab === t.key
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
-            data-ocid={`admin.${t}.tab`}
+            data-ocid={`admin.${t.key}.tab`}
           >
-            {t}
+            {t.label}
           </button>
         ))}
       </div>
@@ -99,34 +154,13 @@ export function Admin() {
                   value: "₹24,800",
                   color: "#F59E0B",
                 },
-              ].map(({ icon: Icon, label, value, color }) => (
-                <div key={label} className="glass-card rounded-2xl p-4">
-                  <Icon size={22} style={{ color }} className="mb-2" />
-                  <div className="font-display text-xl font-black text-foreground">
-                    {value}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="glass-card rounded-2xl p-4">
-              <h3 className="font-semibold text-foreground mb-3">
-                Quick Stats
-              </h3>
-              {[
-                { label: "Matches Today", value: "89" },
-                { label: "Messages Sent", value: "2,341" },
-                { label: "New Signups", value: "23" },
-                { label: "Pro Subscribers", value: "156" },
-              ].map(({ label, value }) => (
-                <div
-                  key={label}
-                  className="flex justify-between py-2 border-b border-border/50 last:border-0"
-                >
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <span className="text-sm font-bold text-foreground">
-                    {value}
-                  </span>
+              ].map((stat) => (
+                <div key={stat.label} className="glass-card rounded-2xl p-4">
+                  <stat.icon size={20} style={{ color: stat.color }} />
+                  <p className="text-2xl font-bold text-foreground mt-2">
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -134,58 +168,79 @@ export function Admin() {
         )}
 
         {tab === "users" && (
-          <div className="space-y-3" data-ocid="admin.table">
+          <div className="space-y-3">
             {users.map((u, i) => (
               <div
                 key={u.id}
-                className="glass-card rounded-2xl p-4"
-                data-ocid={`admin.row.${i + 1}`}
+                className={`glass-card rounded-2xl p-4 ${
+                  u.blocked ? "opacity-50" : ""
+                }`}
+                data-ocid={`admin.users.item.${i + 1}`}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="font-bold text-foreground text-sm">
-                      {u.name}
+                <div className="flex items-center gap-3 mb-3">
+                  <img
+                    src={`https://api.dicebear.com/7.x/initials/svg?seed=${u.name}`}
+                    alt={u.name}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground text-sm">
+                        {u.name}
+                      </span>
+                      {u.verified && (
+                        <span className="text-[10px] text-blue-400">
+                          ✓ Verified
+                        </span>
+                      )}
+                      {u.pro && (
+                        <span className="text-[10px] text-yellow-400">
+                          ⭐ Pro
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {u.email}
-                    </div>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
                   </div>
-                  {u.blocked && (
-                    <span className="text-xs text-destructive font-semibold">
-                      Blocked
-                    </span>
-                  )}
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => toggleVerified(u.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                      u.verified
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-border text-muted-foreground"
-                    }`}
-                    data-ocid={`admin.row.${i + 1}`}
+                    className="text-[11px] px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                    style={{
+                      background: u.verified
+                        ? "rgba(59,130,246,0.15)"
+                        : "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(59,130,246,0.3)",
+                      color: "#60a5fa",
+                    }}
+                    data-ocid={`admin.users.verify.${i + 1}`}
                   >
-                    {u.verified ? "✓ Verified" : "Unverified"}
+                    {u.verified ? "Unverify" : "Verify"}
                   </button>
                   <button
                     type="button"
                     onClick={() => togglePro(u.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                      u.pro
-                        ? "bg-yellow-500/20 text-yellow-400"
-                        : "bg-border text-muted-foreground"
-                    }`}
-                    data-ocid={`admin.row.${i + 1}`}
+                    className="text-[11px] px-3 py-1.5 rounded-lg font-semibold"
+                    style={{
+                      background: "rgba(251,191,36,0.12)",
+                      border: "1px solid rgba(251,191,36,0.3)",
+                      color: "#fbbf24",
+                    }}
+                    data-ocid={`admin.users.pro.${i + 1}`}
                   >
-                    {u.pro ? "⚡ Pro" : "Free"}
+                    {u.pro ? "Remove Pro" : "Make Pro"}
                   </button>
                   <button
                     type="button"
                     onClick={() => blockUser(u.id)}
-                    className="px-3 py-1 rounded-full text-xs font-semibold bg-destructive/20 text-destructive hover:bg-destructive/30 transition-all flex items-center gap-1"
-                    data-ocid={`admin.row.${i + 1}`}
+                    className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-lg font-semibold"
+                    style={{
+                      background: "rgba(239,68,68,0.12)",
+                      border: "1px solid rgba(239,68,68,0.3)",
+                      color: "#f87171",
+                    }}
+                    data-ocid={`admin.users.block.${i + 1}`}
                   >
                     <Ban size={10} /> {u.blocked ? "Unblock" : "Block"}
                   </button>
@@ -196,51 +251,146 @@ export function Admin() {
         )}
 
         {tab === "reports" && (
-          <div className="space-y-3" data-ocid="admin.list">
+          <div className="space-y-3">
             {reports.map((r, i) => (
               <div
                 key={r.id}
                 className="glass-card rounded-2xl p-4"
-                data-ocid={`admin.item.${i + 1}`}
+                data-ocid={`admin.reports.item.${i + 1}`}
               >
-                <div className="flex justify-between mb-2">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="font-bold text-foreground text-sm">
+                      {r.reason}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {r.reported} · {r.reporter}
+                    </p>
+                  </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                    className={`text-[10px] px-2 py-1 rounded-full font-bold ${
                       r.status === "resolved"
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-red-500/20 text-red-400"
+                        ? "bg-green-500/15 text-green-400"
+                        : "bg-yellow-500/15 text-yellow-400"
                     }`}
                   >
-                    {r.status}
+                    {r.status === "resolved" ? "Resolved" : "Pending"}
                   </span>
                 </div>
-                <div className="text-sm text-foreground mb-1">
-                  <span className="text-muted-foreground">{r.reporter}</span> →{" "}
-                  <span className="font-semibold">{r.reported}</span>
-                </div>
                 <p className="text-xs text-muted-foreground mb-3">{r.reason}</p>
-                {r.status === "pending" && (
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  {r.status === "pending" && (
                     <button
                       type="button"
                       onClick={() => resolveReport(r.id)}
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold text-yellow-400 bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors"
-                      data-ocid={`admin.item.${i + 1}`}
+                      className="text-[11px] px-3 py-1.5 rounded-lg font-semibold text-green-400"
+                      style={{
+                        background: "rgba(34,197,94,0.12)",
+                        border: "1px solid rgba(34,197,94,0.3)",
+                      }}
+                      data-ocid={`admin.reports.resolve.${i + 1}`}
                     >
-                      Warn User
+                      Mark Resolved
                     </button>
+                  )}
+                  {r.status === "pending" && (
                     <button
                       type="button"
                       onClick={() => resolveReport(r.id)}
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold text-red-400 bg-red-500/20 hover:bg-red-500/30 transition-colors"
-                      data-ocid={`admin.item.${i + 1}`}
+                      className="flex items-center gap-1 text-[11px] px-3 py-1.5 rounded-lg font-semibold text-red-400"
+                      style={{
+                        background: "rgba(239,68,68,0.12)",
+                        border: "1px solid rgba(239,68,68,0.3)",
+                      }}
+                      data-ocid={`admin.reports.ban.${i + 1}`}
                     >
-                      Ban User
+                      <Ban size={10} /> Ban User
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "backend-reports" && (
+          <div className="space-y-3">
+            {!actor ? (
+              <div
+                className="text-center py-16"
+                data-ocid="admin.reports.empty_state"
+              >
+                <div className="text-4xl mb-3">🔌</div>
+                <p className="text-muted-foreground font-semibold">
+                  Connect to view reports
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Internet Identity connection required
+                </p>
+              </div>
+            ) : reportsLoading ? (
+              <div
+                className="text-center py-16"
+                data-ocid="admin.reports.loading_state"
+              >
+                <div className="animate-spin text-4xl mb-3">⏳</div>
+                <p className="text-muted-foreground text-sm">
+                  Loading reports...
+                </p>
+              </div>
+            ) : backendReports.length === 0 ? (
+              <div
+                className="text-center py-16"
+                data-ocid="admin.reports.empty_state"
+              >
+                <div className="text-4xl mb-3">✅</div>
+                <p className="text-muted-foreground">No reports filed yet.</p>
+              </div>
+            ) : (
+              backendReports.map((r, i) => (
+                <div
+                  key={r.reportId}
+                  className="glass-card rounded-2xl p-4"
+                  data-ocid={`admin.live_reports.item.${i + 1}`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-bold text-foreground text-sm">
+                        {r.reason}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.reportedAt}
+                      </p>
+                    </div>
+                    <Badge
+                      className={
+                        r.isReviewed
+                          ? "bg-green-500/20 text-green-400 border-0"
+                          : "bg-yellow-500/20 text-yellow-400 border-0"
+                      }
+                    >
+                      {r.isReviewed ? "Reviewed" : "Pending"}
+                    </Badge>
+                  </div>
+                  {r.details && (
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {r.details}
+                    </p>
+                  )}
+                  {!r.isReviewed && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => markReviewed(r.reportId)}
+                      className="text-xs rounded-xl border-green-500/30 text-green-400 hover:bg-green-500/10"
+                      data-ocid={`admin.live_reports.resolve.${i + 1}`}
+                    >
+                      Mark Reviewed
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

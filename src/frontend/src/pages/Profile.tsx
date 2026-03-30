@@ -3,10 +3,12 @@ import {
   Camera,
   CheckCircle,
   Edit2,
+  HelpCircle,
   LogOut,
   Moon,
   Play,
   Plus,
+  Rocket,
   Shield,
   Star,
   Sun,
@@ -14,10 +16,14 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdBanner } from "../components/AdBanner";
+import { AvatarBuilder } from "../components/AvatarBuilder";
+import { BoostButton } from "../components/BoostButton";
 import { BottomNav } from "../components/BottomNav";
+import { ImgWithFallback } from "../components/ImgWithFallback";
 import { RewardedAdModal } from "../components/RewardedAdModal";
+import { SelfieVerification } from "../components/SelfieVerification";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { useApp } from "../context/AppContext";
 import { AVAILABLE_PROMPTS } from "../data/mockData";
@@ -49,145 +55,6 @@ interface PromptCard {
   answer: string;
 }
 
-function VerifyModal({
-  onClose,
-  onVerified,
-}: { onClose: () => void; onVerified: () => void }) {
-  const [step, setStep] = useState<"idle" | "loading" | "done">("idle");
-
-  const handleVerify = () => {
-    setStep("loading");
-    setTimeout(() => {
-      setStep("done");
-      setTimeout(() => {
-        onVerified();
-        onClose();
-      }, 1200);
-    }, 2000);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)" }}
-      onClick={step === "idle" ? onClose : undefined}
-    >
-      <motion.div
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 80, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[430px] rounded-t-3xl p-8 text-center"
-        style={{
-          background: "#faf8ff",
-          boxShadow: "0 -8px 32px rgba(109,40,217,0.15)",
-        }}
-      >
-        {step === "done" ? (
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            className="space-y-3"
-          >
-            <div className="text-5xl">✅</div>
-            <p className="font-bold text-gray-800 text-lg">Profile Verified!</p>
-            <p className="text-sm text-gray-500">
-              Your blue checkmark is now live.
-            </p>
-          </motion.div>
-        ) : step === "loading" ? (
-          <div className="space-y-4 py-4">
-            <div
-              className="w-16 h-16 mx-auto rounded-full flex items-center justify-center animate-pulse"
-              style={{
-                background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-              }}
-            >
-              <Camera size={28} className="text-white" />
-            </div>
-            <p className="text-gray-600 font-semibold">
-              Verifying your selfie…
-            </p>
-            <div
-              className="w-full h-1.5 rounded-full"
-              style={{ background: "rgba(139,92,246,0.15)" }}
-            >
-              <motion.div
-                className="h-1.5 rounded-full"
-                style={{
-                  background: "linear-gradient(90deg, #7C3AED, #EC4899)",
-                }}
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 2 }}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            <div
-              className="w-20 h-20 mx-auto rounded-full flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg, #7C3AED22, #EC489922)",
-                border: "2px dashed rgba(139,92,246,0.4)",
-              }}
-            >
-              <Camera size={32} style={{ color: "#7C3AED" }} />
-            </div>
-            <div>
-              <h3 className="font-display text-xl font-black text-gray-800 mb-1">
-                Verify Your Profile
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Take a quick selfie to get your blue checkmark. Verified
-                profiles get 2x more matches.
-              </p>
-            </div>
-            <div className="space-y-2 text-left">
-              {[
-                "Helps others trust your profile",
-                "Blue ✓ badge on your profile",
-                "Higher visibility in matches",
-              ].map((tip) => (
-                <div
-                  key={tip}
-                  className="flex items-center gap-2 text-sm text-gray-600"
-                >
-                  <CheckCircle
-                    size={14}
-                    className="text-purple-500 flex-shrink-0"
-                  />
-                  {tip}
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={handleVerify}
-              className="w-full py-3.5 rounded-2xl font-bold text-white text-sm"
-              style={{
-                background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-              }}
-            >
-              Take Selfie & Verify
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-sm text-gray-400 hover:text-gray-600"
-            >
-              Not now
-            </button>
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
-  );
-}
-
 export function Profile() {
   const navigate = useNavigate();
   const {
@@ -196,11 +63,19 @@ export function Profile() {
     theme,
     toggleTheme,
     setShowUpgradeModal,
+    setUpgradeReason,
     mode,
     rewardLikes,
     incrementAdsWatched,
     adsWatched,
     verifyProfile,
+    setTutorialDone,
+    planType,
+    superLikesRemaining,
+    nextSuperLikeResetIn,
+    avatarData,
+    setAvatarData,
+    avatarString,
   } = useApp();
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState(user?.bio ?? "");
@@ -217,19 +92,41 @@ export function Profile() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [activePhotoSlot, setActivePhotoSlot] = useState<number | null>(null);
   const [showRewardedAd, setShowRewardedAd] = useState(false);
+  const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
 
   if (!user) return null;
 
-  // Profile completion calculation
-  const photoScore = Math.min(photos.length / 6, 1) * 40;
-  const bioScore = bio.trim().length > 10 ? 20 : (bio.trim().length / 10) * 20;
-  const interestScore =
-    interests.length >= 3 ? 20 : (interests.length / 3) * 20;
-  const promptScore =
-    promptCards.length >= 2 ? 20 : (promptCards.length / 2) * 20;
-  const completionPct = Math.round(
-    photoScore + bioScore + interestScore + promptScore,
-  );
+  // ─── Profile Completion (spec formula) ──────────────────────────────────────
+  let completionPct = 0;
+  if (user.name?.trim()) completionPct += 10;
+  if (user.photoUrl) completionPct += 15;
+  if (bio.trim().length > 5) completionPct += 15;
+  if (interests.length >= 1) completionPct += 15;
+  if (user.major?.trim()) completionPct += 10;
+  if (user.year?.trim()) completionPct += 10;
+  if (user.gender) completionPct += 10;
+  if (user.isVerified) completionPct += 10;
+  if (photos.length >= 3) completionPct += 5;
+
+  // Smart tip
+  let completionTip = "";
+  if (!user.photoUrl)
+    completionTip = "Add a profile photo to get more matches!";
+  else if (bio.trim().length <= 5) completionTip = "Add your bio to stand out!";
+  else if (interests.length < 1)
+    completionTip = "Add interests to find better matches!";
+  else if (!user.isVerified)
+    completionTip = "Verify your profile for a blue checkmark!";
+  else if (photos.length < 3)
+    completionTip = "Add 3+ photos for more visibility!";
+  else completionTip = "Your profile is looking great! 🎉";
+
+  const completionColor =
+    completionPct >= 80
+      ? "#22c55e"
+      : completionPct >= 50
+        ? "#7C3AED"
+        : "#f59e0b";
 
   const toggleInterest = (tag: string) => {
     setInterests((prev) =>
@@ -322,15 +219,6 @@ export function Profile() {
   const nextRewardType: "likes" | "superlike" =
     adsWatched % 2 === 1 ? "superlike" : "likes";
 
-  const completionTips: string[] = [];
-  if (photos.length < 6)
-    completionTips.push(
-      `Add ${6 - photos.length} more photo${6 - photos.length > 1 ? "s" : ""}`,
-    );
-  if (bio.trim().length <= 10) completionTips.push("Write a bio");
-  if (interests.length < 3) completionTips.push("Add at least 3 interests");
-  if (promptCards.length < 2) completionTips.push("Answer 2 prompts");
-
   return (
     <div className="app-shell bg-app flex flex-col h-[100dvh]">
       <header className="glass-dark px-5 py-4 flex justify-between items-center flex-shrink-0">
@@ -358,48 +246,48 @@ export function Profile() {
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Profile Completion Bar */}
+        {/* ─ Profile Completion Bar ──────────────────────────────────────────────────────────────────── */}
         <div className="px-5 pt-4 pb-2">
           <div className="glass-card rounded-2xl px-4 py-3">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-bold text-foreground">
                 Profile Completion
               </span>
-              <span
+              <motion.span
+                key={completionPct}
+                initial={{ scale: 1.3 }}
+                animate={{ scale: 1 }}
                 className="text-sm font-black"
-                style={{
-                  color:
-                    completionPct >= 80
-                      ? "#22c55e"
-                      : completionPct >= 50
-                        ? "#7C3AED"
-                        : "#f59e0b",
-                }}
+                style={{ color: completionColor }}
               >
                 {completionPct}%
-              </span>
+              </motion.span>
             </div>
             <div
-              className="w-full h-2 rounded-full"
+              className="w-full h-2.5 rounded-full"
               style={{ background: "rgba(139,92,246,0.12)" }}
             >
               <motion.div
-                className="h-2 rounded-full"
-                style={{ background: gradientStyle }}
+                className="h-2.5 rounded-full"
+                style={{
+                  background: "linear-gradient(90deg, #7C3AED, #EC4899)",
+                  boxShadow:
+                    completionPct >= 80
+                      ? "0 0 10px rgba(124,58,237,0.6)"
+                      : "none",
+                }}
                 initial={{ width: 0 }}
                 animate={{ width: `${completionPct}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
               />
             </div>
-            {completionTips.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                💡 {completionTips[0]} to boost your profile
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-2">
+              💡 {completionTip}
+            </p>
           </div>
         </div>
 
-        {/* Verification Banner */}
+        {/* ─ Verification Banner ──────────────────────────────────────────────────────────────────────── */}
         {!user.isVerified ? (
           <div className="px-5 pt-2 pb-1">
             <button
@@ -411,6 +299,7 @@ export function Profile() {
                   "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1))",
                 border: "1px solid rgba(59,130,246,0.3)",
               }}
+              data-ocid="profile.primary_button"
             >
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -450,14 +339,15 @@ export function Profile() {
           </div>
         )}
 
-        {/* Avatar + info */}
+        {/* ─ Avatar + info ────────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 py-4 text-center">
           <div className="relative w-24 h-24 mx-auto mb-4">
             {user.photoUrl ? (
-              <img
+              <ImgWithFallback
                 src={user.photoUrl}
                 alt={user.name}
                 className="w-24 h-24 rounded-full object-cover"
+                fallbackAvatar={avatarString}
                 style={{ boxShadow: glowStyle }}
               />
             ) : (
@@ -535,7 +425,7 @@ export function Profile() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* ─ Stats ───────────────────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4">
           <div className="grid grid-cols-3 gap-3">
             {[
@@ -556,7 +446,85 @@ export function Profile() {
           </div>
         </div>
 
-        {/* Earn More */}
+        {/* ─ Plan Info & Boost ─────────────────────────────────────────────────────────────────────────────────── */}
+        <div className="px-5 mb-4">
+          {/* Plan badge */}
+          <div className="mb-3" data-ocid="profile.card">
+            <div
+              className="rounded-2xl p-4"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-foreground">
+                  Your Plan
+                </span>
+                {planType === "free" ? (
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full text-white/70"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    FREE
+                  </span>
+                ) : planType === "monthly" ? (
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
+                    style={{
+                      background: "linear-gradient(135deg,#7C3AED,#EC4899)",
+                    }}
+                  >
+                    PRO MONTHLY
+                  </span>
+                ) : (
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
+                    style={{
+                      background: "linear-gradient(135deg,#f59e0b,#f97316)",
+                    }}
+                  >
+                    PRO YEARLY ⭐
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>⭐ Super Likes remaining</span>
+                <span className="font-bold text-foreground">
+                  {superLikesRemaining === 999
+                    ? "Unlimited"
+                    : superLikesRemaining}
+                </span>
+              </div>
+              {nextSuperLikeResetIn > 0 && planType !== "yearly" && (
+                <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                  Resets in {Math.floor(nextSuperLikeResetIn / 3_600_000)}h{" "}
+                  {Math.floor((nextSuperLikeResetIn % 3_600_000) / 60_000)}m
+                </div>
+              )}
+              {planType === "free" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUpgradeModal(true);
+                    setUpgradeReason("Unlock Pro features");
+                  }}
+                  className="w-full py-2 rounded-xl text-xs font-bold text-white mt-3"
+                  style={{
+                    background: "linear-gradient(135deg,#7C3AED,#EC4899)",
+                  }}
+                  data-ocid="profile.primary_button"
+                >
+                  ✨ Upgrade to Pro
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Boost button */}
+          <BoostButton />
+        </div>
+
+        {/* ─ Earn More ───────────────────────────────────────────────────────────────────────────────────────────── */}
         {!user.isPro && (
           <div className="px-5 mb-4">
             <motion.div
@@ -568,7 +536,6 @@ export function Profile() {
                   "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.12))",
                 border: "1px solid rgba(245,158,11,0.25)",
               }}
-              data-ocid="profile.card"
             >
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -576,7 +543,7 @@ export function Profile() {
                     🌟 Earn More
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Watch ads to earn free likes & super likes
+                    Watch ads to earn free likes &amp; super likes
                   </p>
                 </div>
                 <div className="text-right">
@@ -616,7 +583,7 @@ export function Profile() {
           </div>
         )}
 
-        {/* My Photos */}
+        {/* ─ My Photos ───────────────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4">
           <h3 className="font-semibold text-sm text-muted-foreground mb-3">
             My Photos{" "}
@@ -637,10 +604,11 @@ export function Profile() {
                   {photo ? (
                     <>
                       <div className="relative aspect-[3/4] rounded-2xl overflow-hidden">
-                        <img
+                        <ImgWithFallback
                           src={photo.url}
                           alt="User uploaded content"
                           className="w-full h-full object-cover"
+                          fallbackAvatar={avatarString}
                         />
                         <div
                           className="absolute inset-0"
@@ -739,7 +707,52 @@ export function Profile() {
           )}
         </div>
 
-        {/* Prompt Cards */}
+        {/* ─ Avatar Builder ────────────────────────────────────────────────────────────────────────────────────── */}
+        <div className="px-5 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm text-muted-foreground">
+              🎭 Avatar
+            </h3>
+          </div>
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(124,58,237,0.08), rgba(236,72,153,0.08))",
+              border: "1.5px solid rgba(139,92,246,0.2)",
+            }}
+          >
+            <div className="flex items-center gap-4 mb-3">
+              <div className="text-4xl select-none">{avatarString}</div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  Your Avatar
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Used as profile fallback when no photo is set
+                </p>
+              </div>
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarBuilder((p) => !p)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                  }}
+                  data-ocid="profile.avatar.button"
+                >
+                  {showAvatarBuilder ? "Done" : "Customize"}
+                </button>
+              )}
+            </div>
+            {showAvatarBuilder && editing && avatarData && (
+              <AvatarBuilder value={avatarData} onChange={setAvatarData} />
+            )}
+          </div>
+        </div>
+
+        {/* ─ Prompt Cards ─────────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm text-muted-foreground">
@@ -799,7 +812,6 @@ export function Profile() {
             ))}
           </div>
 
-          {/* Add Prompt Panel */}
           <AnimatePresence>
             {showAddPrompt && (
               <motion.div
@@ -878,7 +890,7 @@ export function Profile() {
           </AnimatePresence>
         </div>
 
-        {/* Bio */}
+        {/* ─ Bio ──────────────────────────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4">
           <h3 className="font-semibold text-sm text-muted-foreground mb-2">
             About Me
@@ -899,7 +911,7 @@ export function Profile() {
           )}
         </div>
 
-        {/* Interests */}
+        {/* ─ Interests ────────────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4">
           <h3 className="font-semibold text-sm text-muted-foreground mb-2">
             Interests {editing && <span className="text-xs">(max 6)</span>}
@@ -939,7 +951,7 @@ export function Profile() {
           </div>
         )}
 
-        {/* Subscription */}
+        {/* ─ Subscription / How it works ─────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4 space-y-3">
           {!user.isPro ? (
             <>
@@ -958,7 +970,7 @@ export function Profile() {
                 className="w-full py-3 rounded-2xl font-semibold text-sm text-muted-foreground glass-card flex items-center justify-center gap-2 hover:text-foreground transition-colors"
                 data-ocid="profile.secondary_button"
               >
-                <Star size={16} /> View Plans & Pricing
+                <Star size={16} /> View Plans &amp; Pricing
               </button>
             </>
           ) : (
@@ -973,10 +985,31 @@ export function Profile() {
               ⚡ UNIVÈRA Pro Active
             </div>
           )}
+
+          {/* How it works button */}
+          <button
+            type="button"
+            onClick={() => {
+              setTutorialDone(false);
+              navigate({ to: "/" });
+            }}
+            className="w-full py-3 px-4 glass-card rounded-xl text-sm font-semibold text-foreground flex items-center gap-3 hover:bg-white/5 transition-colors"
+            data-ocid="profile.secondary_button"
+          >
+            <span className="text-base">🎉</span> How it works (replay tutorial)
+          </button>
         </div>
 
-        {/* Account actions */}
+        {/* ─ Account actions ─────────────────────────────────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4 space-y-2">
+          <button
+            type="button"
+            className="w-full py-3 px-4 glass-card rounded-xl text-sm font-semibold text-foreground flex items-center gap-3 hover:bg-white/5 transition-colors"
+            onClick={() => navigate({ to: "/help" })}
+            data-ocid="profile.help.link"
+          >
+            <HelpCircle size={18} className="text-primary" /> Help Center
+          </button>
           <button
             type="button"
             className="w-full py-3 px-4 glass-card rounded-xl text-sm font-semibold text-foreground flex items-center gap-3 hover:bg-white/5 transition-colors"
@@ -1022,14 +1055,12 @@ export function Profile() {
         rewardType={nextRewardType}
       />
 
-      <AnimatePresence>
-        {showVerifyModal && (
-          <VerifyModal
-            onClose={() => setShowVerifyModal(false)}
-            onVerified={verifyProfile}
-          />
-        )}
-      </AnimatePresence>
+      {/* Selfie Verification — uses real camera */}
+      <SelfieVerification
+        isOpen={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        onVerified={verifyProfile}
+      />
     </div>
   );
 }

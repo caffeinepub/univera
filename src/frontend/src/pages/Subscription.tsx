@@ -4,38 +4,37 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
 
-const FEATURES = [
+const TABLE_ROWS = [
+  { label: "Swipes / day", free: "5", monthly: "10", yearly: "Unlimited" },
   {
-    icon: "💚",
-    label: "Unlimited Likes",
-    desc: "Swipe freely with no daily limits",
+    label: "Super Likes",
+    free: "1/week",
+    monthly: "1/day",
+    yearly: "Unlimited",
   },
-  {
-    icon: "✨",
-    label: "AI-Powered Matching",
-    desc: "Smart compatibility scores & suggestions",
-  },
-  {
-    icon: "⭐",
-    label: "Unlimited Super Likes",
-    desc: "Stand out and get noticed instantly",
-  },
-  {
-    icon: "💬",
-    label: "Priority in Chats",
-    desc: "Your messages appear at the top",
-  },
-  { icon: "🚫", label: "No Ads", desc: "Clean, uninterrupted experience" },
-  {
-    icon: "🔍",
-    label: "Advanced Filters",
-    desc: "Filter by major, interests, and more",
-  },
+  { label: "Ads", free: "3/day", monthly: "None", yearly: "None" },
+  { label: "AI Matches", free: false, monthly: true, yearly: true },
+  { label: "Priority Chat", free: false, monthly: true, yearly: true },
+  { label: "Boosts", free: "—", monthly: "1/week", yearly: "4/week" },
+  { label: "Screenshot", free: false, monthly: true, yearly: true },
 ];
+
+function Cell({ val, accent }: { val: string | boolean; accent?: string }) {
+  if (val === true)
+    return (
+      <Check
+        size={14}
+        className="mx-auto"
+        style={{ color: accent ?? "#22c55e" }}
+      />
+    );
+  if (val === false) return <span className="text-white/30 text-xs">✗</span>;
+  return <span className="text-xs font-medium text-white/80">{val}</span>;
+}
 
 export function Subscription() {
   const navigate = useNavigate();
-  const { user, setUser, mode } = useApp();
+  const { user, setUser, mode, setPlanType, planType } = useApp();
   const [selected, setSelected] = useState<"monthly" | "annual">("annual");
   const [success, setSuccess] = useState(false);
 
@@ -48,9 +47,49 @@ export function Subscription() {
   const accentBg = isBff ? "rgba(245,158,11,0.12)" : "rgba(139,92,246,0.12)";
 
   const handleUpgrade = () => {
-    if (user) setUser({ ...user, isPro: true });
-    setSuccess(true);
-    setTimeout(() => navigate({ to: "/app" }), 1500);
+    const amount = selected === "annual" ? 49900 : 19900; // in paise
+    const planName =
+      selected === "annual" ? "UNIVÈRA Pro Annual" : "UNIVÈRA Pro Monthly";
+
+    const options = {
+      key: "rzp_test_SXNtg8RRNlaboL",
+      amount: amount,
+      currency: "INR",
+      name: "UNIVÈRA",
+      description: planName,
+      image: "/favicon.ico",
+      handler: (_response: any) => {
+        // Payment successful
+        const expiryMs =
+          selected === "annual"
+            ? Date.now() + 365 * 24 * 60 * 60 * 1000
+            : Date.now() + 30 * 24 * 60 * 60 * 1000;
+        const planKey = selected === "annual" ? "yearly" : "monthly";
+        setPlanType(planKey, expiryMs);
+        if (user) setUser({ ...user, isPro: true });
+        setSuccess(true);
+        setTimeout(() => navigate({ to: "/app" }), 1500);
+      },
+      prefill: {
+        name: user?.name || "",
+        email: user?.email || "",
+      },
+      notes: {
+        plan: selected,
+      },
+      theme: {
+        color: isBff ? "#F59E0B" : "#7C3AED",
+      },
+      modal: {
+        ondismiss: () => {
+          // User closed without paying — do nothing
+        },
+      },
+    };
+
+    // @ts-ignore
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   };
 
   if (success) {
@@ -137,31 +176,100 @@ export function Subscription() {
           </p>
         </motion.div>
 
-        {/* Features list */}
-        <div className="space-y-3 mb-8">
-          {FEATURES.map((f, i) => (
-            <motion.div
-              key={f.label}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.07 }}
-              className="flex items-center gap-4 rounded-2xl p-4"
+        {/* 3-tier comparison table */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="rounded-2xl overflow-hidden mb-8"
+          style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+          data-ocid="subscription.table"
+        >
+          {/* Header */}
+          <div
+            className="grid grid-cols-4 text-center"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            <div className="p-2 text-[11px] text-white/50 font-medium border-r border-white/10">
+              Feature
+            </div>
+            <div className="p-2 text-[11px] text-white/60 font-medium border-r border-white/10">
+              FREE
+              {planType === "free" && (
+                <div className="w-1.5 h-1.5 rounded-full bg-white/40 mx-auto mt-0.5" />
+              )}
+            </div>
+            <div
+              className="p-2 text-[11px] font-bold border-r border-white/10 relative"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                color: accentColor,
+                background: "rgba(139,92,246,0.18)",
               }}
             >
-              <span className="text-2xl">{f.icon}</span>
-              <div className="flex-1">
-                <div className="text-white font-semibold text-sm">
-                  {f.label}
-                </div>
-                <div className="text-white/50 text-xs mt-0.5">{f.desc}</div>
+              ₹199/mo
+              {planType === "monthly" && (
+                <div
+                  className="w-1.5 h-1.5 rounded-full mx-auto mt-0.5"
+                  style={{ background: accentColor }}
+                />
+              )}
+            </div>
+            <div
+              className="p-2 text-[11px] font-bold relative"
+              style={{ color: "#f59e0b", background: "rgba(245,158,11,0.12)" }}
+            >
+              ₹499/yr
+              <span
+                className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white"
+                style={{
+                  background: "linear-gradient(135deg,#f59e0b,#f97316)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Best
+              </span>
+              {planType === "yearly" && (
+                <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 mx-auto mt-0.5" />
+              )}
+            </div>
+          </div>
+          {TABLE_ROWS.map((row, i) => (
+            <div
+              key={row.label}
+              className="grid grid-cols-4 text-center"
+              style={{
+                background:
+                  i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div className="p-2.5 text-[11px] text-left text-white/70 border-r border-white/10 font-medium">
+                {row.label}
               </div>
-              <Check size={16} style={{ color: accentColor }} />
-            </motion.div>
+              <div className="p-2.5 flex items-center justify-center border-r border-white/10">
+                <Cell val={row.free} />
+              </div>
+              <div
+                className="p-2.5 flex items-center justify-center border-r border-white/10"
+                style={{
+                  background:
+                    planType === "monthly" ? "rgba(139,92,246,0.1)" : undefined,
+                }}
+              >
+                <Cell val={row.monthly} accent={accentColor} />
+              </div>
+              <div
+                className="p-2.5 flex items-center justify-center"
+                style={{
+                  background:
+                    planType === "yearly" ? "rgba(245,158,11,0.08)" : undefined,
+                }}
+              >
+                <Cell val={row.yearly} accent="#f59e0b" />
+              </div>
+            </div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Plan cards */}
         <div className="grid grid-cols-2 gap-3 mb-6">

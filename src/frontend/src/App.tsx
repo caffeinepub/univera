@@ -11,6 +11,7 @@ import { AppProvider } from "./context/AppContext";
 import { Admin } from "./pages/Admin";
 import { Chat } from "./pages/Chat";
 import { Feed } from "./pages/Feed";
+import { HelpCenter } from "./pages/HelpCenter";
 import { Home } from "./pages/Home";
 import { Landing } from "./pages/Landing";
 import { Matches } from "./pages/Matches";
@@ -93,6 +94,12 @@ const signupRoute = createRoute({
   component: Signup,
 });
 
+const helpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/help",
+  component: HelpCenter,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   homeRoute,
@@ -105,6 +112,7 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   subscriptionRoute,
   signupRoute,
+  helpRoute,
 ]);
 
 const router = createRouter({ routeTree });

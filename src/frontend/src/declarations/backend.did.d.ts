@@ -10,6 +10,13 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface ChatMessage {
+  'msgId' : string,
+  'text' : string,
+  'sentAt' : Time,
+  'matchId' : string,
+  'senderUserId' : Principal,
+}
 export interface Comment {
   'id' : string,
   'userName' : string,
@@ -32,6 +39,16 @@ export interface FeedPost {
   'likesCount' : bigint,
   'promptAnswer' : [] | [string],
 }
+export interface Match {
+  'screenshotAttemptFlag' : boolean,
+  'matchCreatedTime' : Time,
+  'matchId' : string,
+  'isMatched' : boolean,
+  'user1' : Principal,
+  'user2' : Principal,
+  'chatDeleted' : boolean,
+  'firstMessageSent' : boolean,
+}
 export interface Notification {
   'id' : string,
   'notificationType' : NotificationType,
@@ -52,12 +69,23 @@ export interface PostData {
   'post' : FeedPost,
   'likesCount' : bigint,
 }
+export interface Report {
+  'isReviewed' : boolean,
+  'reportedUserId' : Principal,
+  'reportedAt' : Time,
+  'reporterUserId' : Principal,
+  'details' : string,
+  'reportId' : string,
+  'reason' : string,
+}
 export type Time = bigint;
 export interface UserProfile {
   'age' : bigint,
   'name' : string,
   'isVerified' : boolean,
+  'gender' : string,
   'photo' : string,
+  'planType' : string,
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -93,8 +121,34 @@ export interface _SERVICE {
   'addComment' : ActorMethod<[string, Comment, string], undefined>,
   'addNotification' : ActorMethod<[Notification, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  /**
+   * / Matches System
+   */
+  'createMatch' : ActorMethod<[Principal, Principal, string], Match>,
+  /**
+   * / Messaging System
+   */
+  'createMessage' : ActorMethod<
+    [ChatMessage, string],
+    {
+        'message' : [] | [
+          {
+            'msgId' : string,
+            'text' : string,
+            'sentAt' : Time,
+            'matchId' : string,
+            'senderUserId' : Principal,
+          }
+        ]
+      }
+  >,
   'createNotifications' : ActorMethod<[Principal, NotificationType], string>,
   'createPost' : ActorMethod<[FeedPost, string], FeedPost>,
+  'deleteChat' : ActorMethod<[string], undefined>,
+  'deleteMatch' : ActorMethod<[string], undefined>,
+  'flagScreenshotAttempt' : ActorMethod<[string], undefined>,
+  'getBlockedUsers' : ActorMethod<[Principal], Array<Principal>>,
+  'getBlockingUsers' : ActorMethod<[Principal], Array<Principal>>,
   /**
    * / User Profile Functions
    */
@@ -102,21 +156,36 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getComments' : ActorMethod<[string], Array<Comment>>,
   'getLikes' : ActorMethod<[string], Array<Principal>>,
+  'getMatch' : ActorMethod<[string], [] | [Match]>,
+  'getMatches' : ActorMethod<[], Array<Match>>,
+  'getMessages' : ActorMethod<[string], Array<ChatMessage>>,
   'getNotifications' : ActorMethod<[Principal], Array<Notification>>,
   /**
    * / Core Functions
    */
   'getPosts' : ActorMethod<[], Array<PostData>>,
   'getPostsCreatedToday' : ActorMethod<[Principal], bigint>,
+  'getReports' : ActorMethod<[], Array<Report>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  /**
-   * / Types
-   */
+  'isBlocked' : ActorMethod<[Principal, Principal], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'likePost' : ActorMethod<[string], [] | [bigint]>,
   'markNotificationsRead' : ActorMethod<[Principal], undefined>,
+  'markReportReviewed' : ActorMethod<[string], undefined>,
+  /**
+   * / Report System
+   */
+  'reportUser' : ActorMethod<[string, Principal, string, string], undefined>,
   'resetDailyLimits' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  /**
+   * / Block System
+   */
+  'toggleBlock' : ActorMethod<
+    [Principal],
+    { 'blockedSuccessfully' : boolean } |
+      { 'unblockedSuccessfully' : boolean }
+  >,
   'unlikePost' : ActorMethod<[string], [] | [bigint]>,
   'updatePostsCreatedToday' : ActorMethod<[Principal], undefined>,
 }

@@ -5,10 +5,12 @@ import Text "mo:core/Text";
 import Map "mo:core/Map";
 import Time "mo:core/Time";
 import List "mo:core/List";
-
+import Iter "mo:core/Iter";
+import Set "mo:core/Set";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
+
 
 
 actor {
@@ -29,6 +31,8 @@ actor {
     photo : Text;
     age : Nat;
     isVerified : Bool;
+    gender : Text; // "male" | "female" | "prefer_not_to_say"
+    planType : Text; // "free" | "monthly" | "yearly"
   };
 
   public type FeedPost = {
@@ -73,6 +77,42 @@ actor {
     read : Bool;
   };
 
+  public type Match = {
+    matchId : Text;
+    user1 : Principal;
+    user2 : Principal;
+    isMatched : Bool;
+    firstMessageSent : Bool;
+    matchCreatedTime : Time.Time;
+    chatDeleted : Bool;
+    screenshotAttemptFlag : Bool;
+  };
+
+  public type Block = {
+    blockId : Text;
+    blockerUserId : Principal;
+    blockedUserId : Principal;
+    blockedAt : Time.Time;
+  };
+
+  public type Report = {
+    reportId : Text;
+    reporterUserId : Principal;
+    reportedUserId : Principal;
+    reason : Text;
+    details : Text;
+    reportedAt : Time.Time;
+    isReviewed : Bool;
+  };
+
+  public type ChatMessage = {
+    msgId : Text;
+    matchId : Text;
+    senderUserId : Principal;
+    text : Text;
+    sentAt : Time.Time;
+  };
+
   public type PostResult = {
     #ok : Text;
     #error : Text;
@@ -106,6 +146,7 @@ actor {
     #invalidPostData;
     #unknown : Text;
     #limitExceeded;
+    #blockNotFound;
   };
 
   type Result<Ok, Err> = {
@@ -123,6 +164,11 @@ actor {
   let feedPosts = Map.empty<Text, FeedPost>();
   let postLikes = Map.empty<Text, ([Principal], Text)>();
   let postsCreatedToday = Map.empty<Principal, Nat>();
+
+  let matches = Map.empty<Text, Match>();
+  let blocks = Map.empty<Text, Block>();
+  let reports = Map.empty<Text, Report>();
+  let chatMessages = Map.empty<Text, ChatMessage>();
 
   ////////////////////
   /// User Profile Functions
@@ -444,4 +490,377 @@ actor {
     };
     notification.id;
   };
+
+  ////////////////////
+  /// Matches System
+  ////////////////////
+
+  public shared ({ caller }) func createMatch(user1 : Principal, user2 : Principal, matchId : Text) : async Match {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create matches");
+    };
+
+    // Verify caller is one of the participants
+    if (caller != user1 and caller != user2) {
+      Runtime.trap("Unauthorized: You must be a participant in the match");
+    };
+
+    if (user1 == user2) {
+      Runtime.trap("You cannot create a match with yourself");
+    };
+
+    // Check if users are blocked
+    let blocked = await isBlocked(user1, user2);
+    if (blocked) {
+      Runtime.trap("Cannot create match: users have blocked each other");
+    };
+
+    let newMatch : Match = {
+      matchId = matchId;
+      user1 = user1;
+      user2 = user2;
+      isMatched = true;
+      firstMessageSent = false;
+      matchCreatedTime = Time.now();
+      chatDeleted = false;
+      screenshotAttemptFlag = false;
+    };
+    matches.add(matchId, newMatch);
+    newMatch;
+  };
+
+  public shared ({ caller }) func deleteMatch(matchId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete matches");
+    };
+
+    let existingMatch = switch (matches.get(matchId)) {
+      case (null) { Runtime.trap("Match not found") };
+      case (?m) {
+        if (m.user1 != caller and m.user2 != caller) {
+          Runtime.trap("Unauthorized: You don't have permission to delete this match");
+        };
+        m;
+      };
+    };
+    matches.remove(matchId);
+  };
+
+  public shared ({ caller }) func flagScreenshotAttempt(matchId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can flag screenshot attempts");
+    };
+    let existingMatch = switch (matches.get(matchId)) {
+      case (null) { Runtime.trap("Match not found") };
+      case (?m) {
+        if (m.user1 != caller and m.user2 != caller) {
+          Runtime.trap("Unauthorized: You don't have permission to flag this match");
+        };
+        m;
+      };
+    };
+    let updatedMatch = {
+      existingMatch with
+      screenshotAttemptFlag = true;
+    };
+    matches.add(matchId, updatedMatch);
+  };
+
+  public query ({ caller }) func getMatches() : async [Match] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view matches");
+    };
+    let userMatches = matches.filter(func(_k, m) { m.user1 == caller or m.user2 == caller });
+    userMatches.values().toArray();
+  };
+
+  public query ({ caller }) func getMatch(matchId : Text) : async ?Match {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view matches");
+    };
+
+    switch (matches.get(matchId)) {
+      case (?m) {
+        // Verify caller is a participant in the match
+        if (m.user1 != caller and m.user2 != caller) {
+          Runtime.trap("Unauthorized: You can only view your own matches");
+        };
+        ?m;
+      };
+      case (null) { null };
+    };
+  };
+
+  ////////////////////
+  /// Block System
+  ////////////////////
+
+  public shared ({ caller }) func toggleBlock(targetUserId : Principal) : async {
+    #blockedSuccessfully : Bool;
+    #unblockedSuccessfully : Bool;
+  } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can block/unblock users");
+    };
+
+    if (caller == targetUserId) { Runtime.trap("Cannot block yourself") };
+
+    let blockKey = caller.toText() # "_" # targetUserId.toText();
+
+    switch (blocks.get(blockKey)) {
+      case (null) {
+        let newBlock : Block = {
+          blockId = blockKey;
+          blockerUserId = caller;
+          blockedUserId = targetUserId;
+          blockedAt = Time.now();
+        };
+        blocks.add(blockKey, newBlock);
+        #blockedSuccessfully(true);
+      };
+      case (?existingBlock) {
+        if (existingBlock.blockerUserId == caller and existingBlock.blockedUserId == targetUserId) {
+          blocks.remove(blockKey);
+          #unblockedSuccessfully(true);
+        } else {
+          Runtime.trap("Unauthorized: Only the original blocker can unblock");
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func isBlocked(user1 : Principal, user2 : Principal) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can check block status");
+    };
+
+    // Verify caller is one of the users being checked
+    if (caller != user1 and caller != user2) {
+      Runtime.trap("Unauthorized: Can only check block status for yourself");
+    };
+
+    let blockKey1 = user1.toText() # "_" # user2.toText();
+    let blockKey2 = user2.toText() # "_" # user1.toText();
+    blocks.containsKey(blockKey1) or blocks.containsKey(blockKey2);
+  };
+
+  public query ({ caller }) func getBlockedUsers(userId : Principal) : async [Principal] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view blocked users");
+    };
+
+    // Verify caller can only view their own blocked users
+    if (caller != userId) {
+      Runtime.trap("Unauthorized: Can only view your own blocked users");
+    };
+
+    blocks.values().toArray().filter(func(b) { b.blockerUserId == caller }).map<Block, Principal>(func(b) { b.blockedUserId });
+  };
+
+  public query ({ caller }) func getBlockingUsers(userId : Principal) : async [Principal] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view who blocked them");
+    };
+
+    // Verify caller can only view who blocked them
+    if (caller != userId) {
+      Runtime.trap("Unauthorized: Can only view who blocked you");
+    };
+
+    blocks.values().toArray().filter(func(b) { b.blockedUserId == caller }).map<Block, Principal>(func(b) { b.blockerUserId });
+  };
+
+  ////////////////////
+  /// Messaging System
+  ////////////////////
+
+  public shared ({ caller }) func createMessage(incomingMsg : ChatMessage, key : Text) : async {
+    #message : ?
+    {
+      msgId : Text;
+      matchId : Text;
+      senderUserId : Principal;
+      text : Text;
+      sentAt : Time.Time;
+    };
+  } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can send messages");
+    };
+
+    // Verify caller matches senderUserId to prevent impersonation
+    if (incomingMsg.senderUserId != caller) {
+      Runtime.trap("Unauthorized: Cannot send messages as another user");
+    };
+
+    // Validate match exists and is accepted
+    switch (matches.get(incomingMsg.matchId)) {
+      case (?thisMatch) {
+        // Verify caller is a participant in the match
+        if (thisMatch.user1 != caller and thisMatch.user2 != caller) {
+          Runtime.trap("Unauthorized: You are not a participant in this match");
+        };
+
+        if (not thisMatch.isMatched) {
+          Runtime.trap("Cannot send message - Match not accepted yet by both users");
+        };
+
+        // Check if users are blocked
+        let blocked = await isBlocked(thisMatch.user1, thisMatch.user2);
+        if (blocked) {
+          Runtime.trap("Cannot send message: users have blocked each other");
+        };
+
+        // Determine receiver
+        let receiverId = if (caller == thisMatch.user1) { thisMatch.user2 } else { thisMatch.user1 };
+
+        // Check 24hr expiry for first message
+        if (not thisMatch.firstMessageSent) {
+          let hoursSinceMatchCreated = (Time.now() - thisMatch.matchCreatedTime) / 3600_000_000_000;
+          if (hoursSinceMatchCreated >= 24) {
+            Runtime.trap("First message window has expired");
+          };
+
+          // Enforce female-first rule
+          switch (userProfiles.get(caller)) {
+            case (?senderProfile) {
+              if (senderProfile.gender != "female") {
+                Runtime.trap("First message must be sent by female user");
+              };
+            };
+            case (null) {
+              Runtime.trap("Sender profile not found");
+            };
+          };
+        };
+
+        let newChatMsg : ChatMessage = {
+          msgId = key;
+          matchId = incomingMsg.matchId;
+          senderUserId = caller;
+          text = incomingMsg.text;
+          sentAt = Time.now();
+        };
+
+        let thisMatchUpdated = {
+          thisMatch with firstMessageSent = true;
+        };
+        matches.add(incomingMsg.matchId, thisMatchUpdated);
+        chatMessages.add(key, newChatMsg);
+        #message(?newChatMsg);
+      };
+      case (null) { #message(null) };
+    };
+  };
+
+  public shared ({ caller }) func deleteChat(matchId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete chats");
+    };
+
+    // Verify caller is a participant in the match
+    switch (matches.get(matchId)) {
+      case (?m) {
+        if (m.user1 != caller and m.user2 != caller) {
+          Runtime.trap("Unauthorized: You can only delete your own chats");
+        };
+      };
+      case (null) {
+        Runtime.trap("Match not found");
+      };
+    };
+
+    // Delete all messages for this match
+    let messagesToDelete = chatMessages.filter(func(_k, msg) { msg.matchId == matchId });
+    for ((key, _) in messagesToDelete.entries()) {
+      chatMessages.remove(key);
+    };
+
+    // Remove the match
+    matches.remove(matchId);
+  };
+
+  public query ({ caller }) func getMessages(matchId : Text) : async [ChatMessage] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can retrieve messages");
+    };
+
+    // Verify caller is a participant in the match
+    switch (matches.get(matchId)) {
+      case (?m) {
+        if (m.user1 != caller and m.user2 != caller) {
+          Runtime.trap("Unauthorized: You can only view messages from your own matches");
+        };
+      };
+      case (null) {
+        Runtime.trap("Match not found");
+      };
+    };
+
+    var filteredMessages : [ChatMessage] = [];
+    for ((key, message) in chatMessages.entries()) {
+      if (message.matchId == matchId) {
+        let messageArray : [ChatMessage] = [message];
+        filteredMessages := filteredMessages.concat(messageArray);
+      };
+    };
+    filteredMessages;
+  };
+
+  ////////////////////
+  /// Report System
+  ////////////////////
+
+  public shared ({ caller }) func reportUser(id : Text, reportedUserId : Principal, reportType : Text, details : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can report other users");
+    };
+    if (reportedUserId == caller) { Runtime.trap("Cannot report yourself") };
+    let newReport : Report = {
+      reportId = id;
+      reporterUserId = caller;
+      reportedUserId = reportedUserId;
+      reason = reportType;
+      details;
+      reportedAt = Time.now();
+      isReviewed = false;
+    };
+    reports.add(id, newReport);
+  };
+
+  public query ({ caller }) func getReports() : async [Report] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view reports");
+    };
+    reports.values().toArray();
+  };
+
+  public shared ({ caller }) func markReportReviewed(reportId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can mark reports reviewed");
+    };
+    switch (reports.get(reportId)) {
+      case (null) { Runtime.trap("Report not found") };
+      case (?existingReport) {
+        let updatedReport = {
+          existingReport with
+          isReviewed = true;
+        };
+        reports.add(reportId, updatedReport);
+      };
+    };
+  };
+
+  ////////////////////
+  /// Internal Helpers
+  ////////////////////
+
+  func getCurrentUserReports(caller : Principal) : [Report] {
+    reports.values().toArray().filter(func(r) { r.reporterUserId == caller });
+  };
+
+  func getCurrentUserBlocks(caller : Principal) : [Block] {
+    blocks.values().toArray().filter(func(b) { b.blockerUserId == caller });
+  };
 };
+

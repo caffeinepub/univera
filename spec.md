@@ -1,35 +1,41 @@
-# UNIVÈRA — Swipe-First Redesign
+# Univera Advanced Chat & Personalization System
 
 ## Current State
-- 5-tab bottom nav: Home (Netflix-style), Feed, Likes, Chat, Profile
-- Default landing route ("/") is the login page
-- After login, users go to /app (SwipeDeck)
-- Feed tab (/feed) is a full post feed with create-post functionality
-- Home tab (/home) is a Netflix-style homepage with hero carousel and horizontal rows
-- Landing.tsx is a static form-based login page with motion fade-in (no animated background)
-- Signup/Onboarding requires 6 photos minimum
-- BottomNav has 5 tabs: Home, Feed, Likes, Chat, Profile
+Univers already has:
+- Chat.tsx with themes (default/pink/purple/yellow/blue), AI reply button, emoji/sticker picker, safety menu (report/block/remove/delete)
+- EmojiStickerPicker.tsx with emoji grid + 3 Unicode sticker packs (Love, Funny, BFF)
+- AvatarBuilder.tsx with skin tone, hair style/color, outfit, accessory (no tabs, no eyes)
+- ProfileViewer.tsx with photo display, ImgWithFallback component
+- Motion animations on messages (fade+slide in)
+- MockData with profiles containing photos[] array with url+caption fields
 
 ## Requested Changes (Diff)
 
 ### Add
-- Animated background to the sign-in screen (Landing.tsx): floating particles or soft gradient pulse, UNIVÈRA branded, lightweight (CSS-only or minimal JS, no heavy libraries)
-- Real-time ambient motion on login screen background (floating orbs, particles, or gradient shimmer)
+- Generated image sticker packs: Love (9 stickers), BFF (9 stickers), Meme (9 stickers) — cute cartoon Gen-Z style PNGs
+- Eyes customization category in AvatarBuilder
+- Tabbed UI for AvatarBuilder: Face | Hair | Outfit | Accessories
+- Enhanced AI reply suggestions panel with 4 specific prompt buttons: "Ask about hobbies", "Start conversation", "Flirty reply", "Funny reply" + optional free-form AI input
+- Sticker send animation (bounce/pop effect with motion)
+- Match confetti animation on new match
+- Seen/delivered status on messages (✓ delivered, ✓✓ seen)
+- Profile photo gallery: main photo at top + scrollable captions gallery in ProfileViewer
 
 ### Modify
-- BottomNav: change from 5 tabs (Home, Feed, Likes, Chat, Profile) to 4 tabs: Swipe (/app), Likes (/matches), Chat (/chat/m1), Profile (/profile)
-- SwipeDeck (/app) becomes the primary landing after login — already is, just confirm nav reflects it
-- Signup photo minimum: change from 6 required to 3 minimum, 6 maximum
-- App.tsx: remove feedRoute and homeRoute from active routing (or keep routes but remove from nav)
-- BottomNav active state: Swipe tab is active when on /app
+- EmojiStickerPicker: Add Meme sticker tab ("Bruh 😐", "What?? 😳", "LOL 😂" etc.), upgrade sticker display to show image stickers where available with fallback to emoji
+- AvatarBuilder: Reorganize into 4 tabs (Face/Hair/Outfit/Accessories), add Eyes options, keep live preview center
+- Chat.tsx: Improve AI suggestions UI (4 contextual buttons + text field), add seen/delivered status, add per-message sticker animation
+- Profile photos: Ensure photos[] mapping renders with captions, main profileImage shown at top, fallback to avatar/placeholder, lazy loading skeletons
+- AppContext/mockData: Ensure profile.photos array is properly populated with url+caption objects
 
 ### Remove
-- Feed tab from BottomNav entirely
-- Home tab from BottomNav entirely
+- Nothing removed
 
 ## Implementation Plan
-1. Update BottomNav.tsx: replace 5-tab array with 4-tab array [Swipe→/app, Likes→/matches, Chat→/chat/m1, Profile→/profile]; use Flame/Zap icon for Swipe
-2. Update Landing.tsx: add animated background layer (floating gradient orbs using CSS keyframes + motion/react, lightweight — no canvas, no heavy libs); keep existing login form on top
-3. Update Signup.tsx: find photo upload section and change minimum requirement from 6 to 3 (allow proceeding with 3+ photos instead of requiring 6)
-4. App.tsx: keep all routes intact (don't break navigation) but BottomNav no longer shows Home or Feed
-5. Validate build passes
+1. Update EmojiStickerPicker with Meme tab + image stickers from /assets/generated/stickers/ with emoji fallback
+2. Refactor AvatarBuilder to use shadcn Tabs (Face | Hair | Outfit | Accessories); add Eyes category
+3. Enhance Chat.tsx AI suggestions: replace single button with 4 contextual buttons (Ask about hobbies / Start conversation / Flirty reply / Funny reply) + optional AI input field
+4. Add seen/delivered status rendering on messages (last sent message shows ✓✓ seen or ✓ delivered)
+5. Add sticker bounce animation using motion.div with spring physics on sticker messages
+6. Fix ProfileViewer to properly render profile.photos[] with url+caption, main photo at top, captions below, loading skeleton, onError fallback
+7. Ensure mockData profiles all have photos[] with url+caption correctly populated
