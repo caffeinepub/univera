@@ -1,8 +1,18 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Camera, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Images,
+  Loader2,
+  X,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
+import { useUploadPhoto } from "../hooks/useUploadPhoto";
 
 function generateOTP(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -233,8 +243,6 @@ const MAJOR_OPTIONS = [
   "Medicine",
   "Arts",
 ];
-const PHOTO_INDICES = [0, 1, 2, 3, 4, 5] as const;
-
 const inputStyle = {
   background: "rgba(139,92,246,0.08)",
   border: "1px solid rgba(139,92,246,0.25)",
@@ -242,7 +250,8 @@ const inputStyle = {
 };
 
 export function Signup() {
-  const { setUser } = useApp();
+  const { setUser, updateUserPhotos } = useApp();
+  const { uploadFile } = useUploadPhoto();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<MainStep>(1);
@@ -281,12 +290,15 @@ export function Signup() {
   const [age, setAge] = useState("");
   const [major, setMajor] = useState("");
   const [year, setYear] = useState("");
-  const [photos, setPhotos] = useState<{ url: string; caption: string }[]>(
-    PHOTO_INDICES.map(() => ({ url: "", caption: "" })),
-  );
+  const [photos, setPhotos] = useState<{ url: string; caption: string }[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [profileAError, setProfileAError] = useState("");
   const [profileBError, setProfileBError] = useState("");
-  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const startCooldown = (
     setter: React.Dispatch<React.SetStateAction<number>>,
@@ -400,32 +412,67 @@ export function Signup() {
     setProfileSub("b");
   };
 
-  const handlePhotoChange = (idx: number, file: File | null) => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPhotos((prev) => {
-      const next = [...prev];
-      next[idx] = { url, caption: next[idx]?.caption || "" };
-      return next;
-    });
+  // ─── Bulk photo selection ──────────────────────────────────────────────────
+  const handleBulkFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const capped = files.slice(0, 6);
+    setSelectedFiles(capped);
+    // Generate preview object URLs
+    const previews = capped.map((file) => ({
+      url: URL.createObjectURL(file),
+      caption: "",
+    }));
+    setPhotos(previews);
+    e.target.value = "";
+  };
+
+  const handleRemoveSelectedPhoto = (idx: number) => {
+    if (photos.length <= 3) return; // min 3
+    URL.revokeObjectURL(photos[idx]?.url ?? "");
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleCaptionChange = (idx: number, caption: string) => {
     setPhotos((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], caption };
+      next[idx] = { ...next[idx], caption: caption.slice(0, 80) };
       return next;
     });
   };
 
   const readyCount = photos.filter((p) => p.url).length;
 
-  const handleCompleteSignup = () => {
+  const handleCompleteSignup = useCallback(async () => {
     setProfileBError("");
     if (readyCount < 3) {
-      setProfileBError("Please upload at least 3 photos.");
+      setProfileBError("Please select at least 3 photos.");
       return;
     }
+
+    setUploadProgress({ current: 0, total: readyCount });
+
+    // Upload each photo (compress → blob storage → URL)
+    const uploadedPhotos: { url: string; caption: string }[] = [];
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      if (!photo.url) continue;
+      try {
+        let url = photo.url;
+        const file = selectedFiles[i];
+        if (file) {
+          url = await uploadFile(file);
+        }
+        uploadedPhotos.push({ url, caption: photo.caption });
+      } catch {
+        // Fall back to preview URL on upload error
+        uploadedPhotos.push({ url: photo.url, caption: photo.caption });
+      }
+      setUploadProgress({ current: i + 1, total: photos.length });
+    }
+
+    setUploadProgress(null);
+
     const account = {
       email,
       phone: `+91${phone}`,
@@ -435,7 +482,7 @@ export function Signup() {
       age: Number.parseInt(age),
       major,
       year,
-      photos,
+      photos: uploadedPhotos,
       isVerified: false,
       interests: [],
       bio: "",
@@ -445,6 +492,7 @@ export function Signup() {
     );
     stored.push(account);
     localStorage.setItem("univera_accounts", JSON.stringify(stored));
+
     setUser({
       name,
       email,
@@ -455,13 +503,38 @@ export function Signup() {
       isPro: false,
       bio: "",
       interests: [],
-      photoUrl: photos[0]?.url || undefined,
+      photoUrl: uploadedPhotos[0]?.url || undefined,
       gender: gender as "male" | "female" | "prefer_not_to_say",
-      photos,
+      photos: uploadedPhotos,
+      coverPhotoIndex: 0,
       isVerified: false,
     });
+
+    // Persist to backend if actor is available
+    try {
+      await updateUserPhotos(uploadedPhotos, 0);
+    } catch {
+      // Non-critical — photos already in local state
+    }
+
     navigate({ to: "/onboarding" });
-  };
+  }, [
+    readyCount,
+    photos,
+    selectedFiles,
+    uploadFile,
+    email,
+    phone,
+    password,
+    name,
+    gender,
+    age,
+    major,
+    year,
+    setUser,
+    updateUserPhotos,
+    navigate,
+  ]);
 
   const renderStep = () => {
     if (step === 1) {
@@ -888,9 +961,34 @@ export function Signup() {
             {readyCount}/6
           </span>
         </div>
-        <p className="text-xs mb-4 opacity-70" style={{ color: "#7c3aed" }}>
-          Add 3–6 photos with a caption or prompt answer.
+        <p className="text-xs mb-3 opacity-70" style={{ color: "#7c3aed" }}>
+          Select 3–6 photos, then add captions. Min 3, max 6.
         </p>
+
+        {/* Upload progress indicator */}
+        {uploadProgress && (
+          <div
+            className="mb-3 px-3 py-2.5 rounded-xl flex items-center gap-2"
+            style={{
+              background: "rgba(139,92,246,0.1)",
+              border: "1px solid rgba(139,92,246,0.25)",
+            }}
+            data-ocid="signup.loading_state"
+          >
+            <Loader2
+              size={14}
+              className="animate-spin"
+              style={{ color: "#7c3aed" }}
+            />
+            <span
+              className="text-xs font-semibold"
+              style={{ color: "#7c3aed" }}
+            >
+              Uploading {uploadProgress.current}/{uploadProgress.total} photos…
+            </span>
+          </div>
+        )}
+
         {profileBError && (
           <div
             className="mb-3 px-3 py-2 rounded-xl text-xs"
@@ -904,67 +1002,86 @@ export function Signup() {
             {profileBError}
           </div>
         )}
-        <div className="space-y-3 mb-5 max-h-[46vh] overflow-y-auto pr-1">
-          {PHOTO_INDICES.map((idx) => {
-            const photo = photos[idx];
-            return (
-              <div
-                key={`photo-slot-${idx}`}
-                className="rounded-2xl p-3"
-                style={{
-                  background: "rgba(139,92,246,0.05)",
-                  border: "1px solid rgba(139,92,246,0.15)",
-                }}
-                data-ocid={`signup.item.${idx + 1}`}
+
+        {/* Bulk select trigger */}
+        {photos.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => bulkFileInputRef.current?.click()}
+            data-ocid="signup.upload_button"
+            className="w-full py-8 rounded-2xl flex flex-col items-center justify-center gap-3 mb-4 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              background: "rgba(139,92,246,0.06)",
+              border: "2px dashed rgba(139,92,246,0.3)",
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{ background: "rgba(139,92,246,0.12)" }}
+            >
+              <Images size={24} style={{ color: "#7c3aed" }} />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-sm" style={{ color: "#4c1d95" }}>
+                Select 3–6 photos
+              </p>
+              <p
+                className="text-xs opacity-60 mt-0.5"
+                style={{ color: "#7c3aed" }}
               >
-                <div className="flex gap-3 items-start">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRefs.current[idx]?.click()}
-                    data-ocid="signup.upload_button"
-                    className="w-16 h-16 flex-shrink-0 rounded-xl flex flex-col items-center justify-center transition-all"
-                    style={{
-                      background: photo.url
-                        ? "transparent"
-                        : "rgba(139,92,246,0.1)",
-                      border: photo.url
-                        ? "none"
-                        : "2px dashed rgba(139,92,246,0.3)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {photo.url ? (
-                      <img
-                        src={photo.url}
-                        alt=""
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    ) : (
-                      <>
-                        <Camera size={18} style={{ color: "#8b5cf6" }} />
-                        <span
-                          className="text-xs mt-1"
-                          style={{ color: "#8b5cf6" }}
-                        >
-                          Photo {idx + 1}
-                        </span>
-                      </>
+                Tap to open your gallery
+              </p>
+            </div>
+          </button>
+        ) : (
+          <>
+            {/* Preview grid with captions */}
+            <div className="space-y-3 mb-4 max-h-[42vh] overflow-y-auto pr-1">
+              {photos.map((photo, idx) => (
+                <div
+                  key={photo.url || `preview-${idx}`}
+                  className="rounded-2xl p-3 flex gap-3 items-start"
+                  style={{
+                    background: "rgba(139,92,246,0.05)",
+                    border: "1px solid rgba(139,92,246,0.15)",
+                  }}
+                  data-ocid={`signup.item.${idx + 1}`}
+                >
+                  {/* Thumbnail */}
+                  <div className="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden">
+                    <img
+                      src={photo.url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    {photos.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSelectedPhoto(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center"
+                        style={{ background: "rgba(0,0,0,0.55)" }}
+                        data-ocid={`signup.delete_button.${idx + 1}`}
+                      >
+                        <X size={10} color="white" />
+                      </button>
                     )}
-                  </button>
-                  <input
-                    ref={(el) => {
-                      fileInputRefs.current[idx] = el;
-                    }}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handlePhotoChange(idx, e.target.files?.[0] || null)
-                    }
-                  />
+                    {idx === 0 && (
+                      <div
+                        className="absolute bottom-0 left-0 right-0 text-center text-[9px] font-bold py-0.5"
+                        style={{
+                          background: "rgba(124,58,237,0.8)",
+                          color: "white",
+                        }}
+                      >
+                        Cover
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Caption */}
                   <div className="flex-1">
                     <select
-                      className="w-full text-xs px-2 py-1.5 rounded-lg outline-none mb-1.5"
+                      className="w-full text-xs px-2 py-1.5 rounded-lg outline-none mb-1.5 appearance-none"
                       style={{ ...inputStyle, fontSize: "11px" }}
                       onChange={(e) => {
                         if (e.target.value)
@@ -972,7 +1089,7 @@ export function Signup() {
                       }}
                       defaultValue=""
                     >
-                      <option value="">Pick a prompt\u2026</option>
+                      <option value="">Pick a prompt…</option>
                       {PROMPTS.map((p) => (
                         <option key={p} value={p}>
                           {p}
@@ -981,32 +1098,66 @@ export function Signup() {
                     </select>
                     <input
                       type="text"
-                      placeholder="Or write your caption\u2026"
+                      placeholder="Or write your caption…"
                       value={photo.caption}
                       onChange={(e) => handleCaptionChange(idx, e.target.value)}
                       className="w-full text-xs px-2 py-1.5 rounded-lg outline-none"
                       style={{ ...inputStyle, fontSize: "11px" }}
+                      data-ocid="signup.input"
                     />
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              ))}
+            </div>
+
+            {/* Add more / change selection */}
+            <button
+              type="button"
+              onClick={() => bulkFileInputRef.current?.click()}
+              className="w-full py-2 rounded-xl text-xs font-semibold mb-3 flex items-center justify-center gap-1.5"
+              style={{
+                background: "rgba(139,92,246,0.08)",
+                color: "#7c3aed",
+                border: "1px solid rgba(139,92,246,0.2)",
+              }}
+              data-ocid="signup.secondary_button"
+            >
+              <Camera size={12} /> Change photos
+            </button>
+          </>
+        )}
+
+        <input
+          ref={bulkFileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleBulkFileSelect}
+          data-ocid="signup.dropzone"
+        />
+
         <button
           type="button"
           onClick={handleCompleteSignup}
-          disabled={readyCount < 3}
+          disabled={readyCount < 3 || !!uploadProgress}
           data-ocid="signup.submit_button"
-          className="w-full py-3 rounded-xl font-semibold text-white text-sm transition-opacity"
+          className="w-full py-3 rounded-xl font-semibold text-white text-sm transition-opacity flex items-center justify-center gap-2"
           style={{
             background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-            opacity: readyCount < 3 ? 0.5 : 1,
+            opacity: readyCount < 3 || !!uploadProgress ? 0.5 : 1,
           }}
         >
-          {readyCount < 6
-            ? `Upload ${6 - readyCount} more photo${6 - readyCount !== 1 ? "s" : ""}`
-            : "Complete Signup \ud83c\udf89"}
+          {uploadProgress ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              Uploading {uploadProgress.current}/{uploadProgress.total} photos…
+            </>
+          ) : readyCount < 3 ? (
+            `Select ${3 - readyCount} more photo${3 - readyCount !== 1 ? "s" : ""}`
+          ) : (
+            "Complete Signup 🎉"
+          )}
         </button>
       </motion.div>
     );

@@ -80,13 +80,19 @@ export const FeedPost = IDL.Record({
   'likesCount' : IDL.Nat,
   'promptAnswer' : IDL.Opt(IDL.Text),
 });
+export const UserPhoto = IDL.Record({ 'url' : IDL.Text, 'caption' : IDL.Text });
 export const UserProfile = IDL.Record({
   'age' : IDL.Nat,
+  'avatarData' : IDL.Opt(IDL.Text),
   'name' : IDL.Text,
+  'isDemo' : IDL.Bool,
   'isVerified' : IDL.Bool,
   'gender' : IDL.Text,
+  'coverPhotoIndex' : IDL.Nat,
   'photo' : IDL.Text,
   'planType' : IDL.Text,
+  'photos' : IDL.Vec(UserPhoto),
+  'verificationImage' : IDL.Opt(IDL.Text),
 });
 export const PostData = IDL.Record({
   'key' : IDL.Text,
@@ -208,6 +214,8 @@ export const idlService = IDL.Service({
     ),
   'resetDailyLimits' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setCoverPhoto' : IDL.Func([IDL.Nat], [], []),
+  'setVerificationImage' : IDL.Func([IDL.Text], [], []),
   'toggleBlock' : IDL.Func(
       [IDL.Principal],
       [
@@ -220,6 +228,10 @@ export const idlService = IDL.Service({
     ),
   'unlikePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
   'updatePostsCreatedToday' : IDL.Func([IDL.Principal], [], []),
+  'updateUserPhotos' : IDL.Func([IDL.Vec(UserPhoto), IDL.Nat], [], []),
+    'getMessagesAfter' : IDL.Func([IDL.Text, IDL.Int], [IDL.Vec(ChatMessage)], ['query']),
+    'saveChatTheme' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'getChatThemes' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -297,13 +309,19 @@ export const idlFactory = ({ IDL }) => {
     'likesCount' : IDL.Nat,
     'promptAnswer' : IDL.Opt(IDL.Text),
   });
+  const UserPhoto = IDL.Record({ 'url' : IDL.Text, 'caption' : IDL.Text });
   const UserProfile = IDL.Record({
     'age' : IDL.Nat,
+    'avatarData' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
+    'isDemo' : IDL.Bool,
     'isVerified' : IDL.Bool,
     'gender' : IDL.Text,
+    'coverPhotoIndex' : IDL.Nat,
     'photo' : IDL.Text,
     'planType' : IDL.Text,
+    'photos' : IDL.Vec(UserPhoto),
+    'verificationImage' : IDL.Opt(IDL.Text),
   });
   const PostData = IDL.Record({
     'key' : IDL.Text,
@@ -429,6 +447,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'resetDailyLimits' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setCoverPhoto' : IDL.Func([IDL.Nat], [], []),
+    'setVerificationImage' : IDL.Func([IDL.Text], [], []),
     'toggleBlock' : IDL.Func(
         [IDL.Principal],
         [
@@ -441,6 +461,10 @@ export const idlFactory = ({ IDL }) => {
       ),
     'unlikePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
     'updatePostsCreatedToday' : IDL.Func([IDL.Principal], [], []),
+    'updateUserPhotos' : IDL.Func([IDL.Vec(UserPhoto), IDL.Nat], [], []),
+    'getMessagesAfter' : IDL.Func([IDL.Text, IDL.Int], [IDL.Vec(ChatMessage)], ['query']),
+    'saveChatTheme' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'getChatThemes' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
   });
 };
 

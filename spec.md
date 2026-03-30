@@ -1,41 +1,34 @@
-# Univera Advanced Chat & Personalization System
+# Univera – Real-Time Chat Persistence
 
 ## Current State
-Univers already has:
-- Chat.tsx with themes (default/pink/purple/yellow/blue), AI reply button, emoji/sticker picker, safety menu (report/block/remove/delete)
-- EmojiStickerPicker.tsx with emoji grid + 3 Unicode sticker packs (Love, Funny, BFF)
-- AvatarBuilder.tsx with skin tone, hair style/color, outfit, accessory (no tabs, no eyes)
-- ProfileViewer.tsx with photo display, ImgWithFallback component
-- Motion animations on messages (fade+slide in)
-- MockData with profiles containing photos[] array with url+caption fields
+
+The app is a full-stack ICP dating app. The Motoko backend already has `createMessage`, `getMessages`, `createMatch`, `getMatches`, `deleteMatch`, `deleteChat`, `toggleBlock`, and `reportUser`. The frontend `Chat.tsx` stores messages entirely in React component state (volatile — lost on refresh). `AppContext.tsx` stores matches in local state seeded from `INITIAL_MATCHES` mock data. Chat themes are persisted to `localStorage`. The backend has no timestamp-based message filtering.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Generated image sticker packs: Love (9 stickers), BFF (9 stickers), Meme (9 stickers) — cute cartoon Gen-Z style PNGs
-- Eyes customization category in AvatarBuilder
-- Tabbed UI for AvatarBuilder: Face | Hair | Outfit | Accessories
-- Enhanced AI reply suggestions panel with 4 specific prompt buttons: "Ask about hobbies", "Start conversation", "Flirty reply", "Funny reply" + optional free-form AI input
-- Sticker send animation (bounce/pop effect with motion)
-- Match confetti animation on new match
-- Seen/delivered status on messages (✓ delivered, ✓✓ seen)
-- Profile photo gallery: main photo at top + scrollable captions gallery in ProfileViewer
+- `getMessagesAfter(matchId, afterTimestamp)` Motoko query — returns only `ChatMessage` records with `sentAt > afterTimestamp`, enabling incremental polling
+- `saveChatTheme(matchId, theme)` Motoko update — stores per-user, per-chat theme keyed by `callerPrincipal + matchId`
+- `getChatThemes()` Motoko query — returns all `(matchId, theme)` pairs for the calling user
+- `hooks/useChatPolling.ts` — React hook that polls `getMessagesAfter` every 2500ms, appending only new messages
+- First-load banner: "New chat system activated 💬" shown once (keyed by `univera_chat_backend_activated` in localStorage)
+- `univera_user_id` in localStorage — UUID generated on first app load, used as local display identity key
 
 ### Modify
-- EmojiStickerPicker: Add Meme sticker tab ("Bruh 😐", "What?? 😳", "LOL 😂" etc.), upgrade sticker display to show image stickers where available with fallback to emoji
-- AvatarBuilder: Reorganize into 4 tabs (Face/Hair/Outfit/Accessories), add Eyes options, keep live preview center
-- Chat.tsx: Improve AI suggestions UI (4 contextual buttons + text field), add seen/delivered status, add per-message sticker animation
-- Profile photos: Ensure photos[] mapping renders with captions, main profileImage shown at top, fallback to avatar/placeholder, lazy loading skeletons
-- AppContext/mockData: Ensure profile.photos array is properly populated with url+caption objects
+- `main.mo` — add `chatThemeMap` storage, `getMessagesAfter`, `saveChatTheme`, `getChatThemes`
+- `backend.d.ts` and declarations — add type signatures for the three new functions
+- `Chat.tsx` — replace volatile state messages with backend-loaded messages; add polling; demo profiles bypass backend (use localStorage); wire send to `actor.createMessage()`
+- `AppContext.tsx` — add `userId` (localStorage UUID); add `loadChatMessages`, `sendChatMessage`, `syncChatThemes` helpers
+- `Matches.tsx` — call `getMatches()` on actor ready, merge with demo matches
 
 ### Remove
-- Nothing removed
+- Hard-coded `MESSAGES[match.id]` as the live chat source for non-demo profiles
 
 ## Implementation Plan
-1. Update EmojiStickerPicker with Meme tab + image stickers from /assets/generated/stickers/ with emoji fallback
-2. Refactor AvatarBuilder to use shadcn Tabs (Face | Hair | Outfit | Accessories); add Eyes category
-3. Enhance Chat.tsx AI suggestions: replace single button with 4 contextual buttons (Ask about hobbies / Start conversation / Flirty reply / Funny reply) + optional AI input field
-4. Add seen/delivered status rendering on messages (last sent message shows ✓✓ seen or ✓ delivered)
-5. Add sticker bounce animation using motion.div with spring physics on sticker messages
-6. Fix ProfileViewer to properly render profile.photos[] with url+caption, main photo at top, captions below, loading skeleton, onError fallback
-7. Ensure mockData profiles all have photos[] with url+caption correctly populated
+
+1. Add three functions to `main.mo` and add `chatThemeMap` storage
+2. Update `backend.d.ts` and `declarations/` with new function signatures
+3. Create `hooks/useChatPolling.ts`
+4. Update `AppContext.tsx` with userId, loadChatMessages, sendChatMessage, syncChatThemes
+5. Update `Chat.tsx` for demo/real split + polling + first-load banner
+6. Update `Matches.tsx` to load backend matches and merge with demo matches

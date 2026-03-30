@@ -14,6 +14,7 @@ import {
   type LikeReceived,
   MOCK_LIKES_RECEIVED,
   type Match,
+  type Message,
   PROFILES,
   type Profile,
 } from "../data/mockData";
@@ -71,6 +72,7 @@ interface User {
   photoUrl?: string;
   gender?: "male" | "female" | "prefer_not_to_say";
   photos?: { url: string; caption: string }[];
+  coverPhotoIndex?: number;
   isVerified?: boolean;
   promptCards?: PromptCardUser[];
 }
@@ -240,6 +242,22 @@ interface AppContextType {
   avatarString: string;
   chatThemes: Record<string, string>;
   setChatTheme: (chatId: string, theme: string) => void;
+  // Photo management
+  updateUserPhotos: (
+    photos: { url: string; caption: string }[],
+    coverIndex: number,
+  ) => Promise<void>;
+  setCoverPhotoIdx: (index: number) => Promise<void>;
+  setVerificationImageUrl: (url: string) => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
+  // Chat persistence
+  userId: string;
+  loadChatMessages: (matchId: string) => Promise<Message[]>;
+  sendChatMessage: (
+    matchId: string,
+    text: string,
+    msgId?: string,
+  ) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -253,6 +271,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const logout = () => setUserState(null);
   const [mode, setModeState] = useState<AppMode>("dating");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // ─── localStorage userId (for display / identity) ─────────────────────────
+  const [userId] = useState<string>(() => {
+    let id = lsGet("univera_user_id");
+    if (!id) {
+      id = `user_${Math.random().toString(36).substr(2, 9)}_${Date.now().toString(36)}`;
+      lsSet("univera_user_id", id);
+    }
+    return id;
+  });
 
   // ─── Plan / subscription state (persisted) ─────────────────────────────────
   const [planType, setPlanTypeState] = useState<PlanType>(() => {
@@ -350,6 +378,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lsSet("univera_chat_themes", JSON.stringify(next));
       return next;
     });
+    // Fire-and-forget backend save (method declared in backend.d.ts, exists at runtime)
+    if (actor) {
+      (
+        actor as unknown as {
+          saveChatTheme(m: string, t: string): Promise<void>;
+        }
+      )
+        .saveChatTheme(chatId, theme)
+        .catch(() => {});
+    }
   };
 
   // ─── Other existing state ─────────────────────────────────────────────────
@@ -626,6 +664,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [actor],
   );
 
+  // ─── Chat persistence ────────────────────────────────────────────────────────
+  const loadChatMessages = useCallback(
+    async (matchId: string): Promise<Message[]> => {
+      if (!actor) return [];
+      const myPrincipalStr = identity?.getPrincipal().toString() ?? "";
+      try {
+        const rawMsgs = await actor.getMessages(matchId);
+        return rawMsgs.map((m) => ({
+          id: m.msgId,
+          matchId: m.matchId,
+          senderId:
+            m.senderUserId.toString() === myPrincipalStr
+              ? "me"
+              : m.senderUserId.toString(),
+          text: m.text,
+          timestamp: new Date(Number(m.sentAt / 1_000_000n)).toLocaleTimeString(
+            [],
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+            },
+          ),
+        }));
+      } catch {
+        return [];
+      }
+    },
+    [actor, identity],
+  );
+
+  const sendChatMessage = useCallback(
+    async (matchId: string, text: string, msgId?: string): Promise<boolean> => {
+      if (!actor) return false;
+      const key =
+        msgId ?? `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const myPrincipal = identity
+        ? identity.getPrincipal()
+        : Principal.anonymous();
+      try {
+        await actor.createMessage(
+          {
+            msgId: key,
+            text,
+            sentAt: BigInt(Date.now()) * 1_000_000n,
+            matchId,
+            senderUserId: myPrincipal,
+          },
+          key,
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [actor, identity],
+  );
+
+  // Sync chat themes from backend (backend wins over localStorage for conflicts)
+  const syncChatThemes = useCallback(async () => {
+    if (!actor) return;
+    try {
+      // getChatThemes is declared in backend.d.ts and exists at runtime
+      const themes = await (
+        actor as unknown as {
+          getChatThemes(): Promise<Array<[string, string]>>;
+        }
+      ).getChatThemes();
+      if (themes.length === 0) return;
+      setChatThemesState((prev) => {
+        const next = { ...prev };
+        for (const [chatId, theme] of themes) {
+          next[chatId] = theme;
+        }
+        lsSet("univera_chat_themes", JSON.stringify(next));
+        return next;
+      });
+    } catch {
+      // Ignore sync errors
+    }
+  }, [actor]);
+
   // Load posts from backend
   const loadPosts = useCallback(async () => {
     if (!actor) return;
@@ -683,12 +802,125 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [actor, getCallerPrincipal]);
 
+  // ─── Photo management ───────────────────────────────────────────────────────
+  const refreshUserProfile = useCallback(async () => {
+    if (!actor) return;
+    try {
+      const profile = await actor.getCallerUserProfile();
+      if (profile?.photos && profile.photos.length > 0) {
+        setUserState((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            photos: profile.photos.map((p) => ({
+              url: p.url,
+              caption: p.caption,
+            })),
+            coverPhotoIndex: Number(profile.coverPhotoIndex),
+            photoUrl:
+              profile.photos[Number(profile.coverPhotoIndex)]?.url ??
+              profile.photo,
+            isVerified: profile.isVerified,
+          };
+        });
+      }
+    } catch (e) {
+      console.warn("refreshUserProfile failed", e);
+    }
+  }, [actor]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   useEffect(() => {
     if (actor) {
       loadPosts();
       loadNotifications();
+      refreshUserProfile();
+      syncChatThemes();
+      // Load backend matches and merge with INITIAL_MATCHES
+      actor
+        .getMatches()
+        .then((backendMatches) => {
+          const frontendMatches: Match[] = backendMatches.map((m) => ({
+            id: m.matchId,
+            profileId: m.matchId, // provisional — won't find in PROFILES, filtered in Matches.tsx
+            matchedAt: "Matched",
+            lastMessage: "Say hello! 👋",
+            unread: 0,
+          }));
+          setMatches((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newMatches = frontendMatches.filter(
+              (m) => !existingIds.has(m.id),
+            );
+            if (newMatches.length === 0) return prev;
+            return [...prev, ...newMatches];
+          });
+        })
+        .catch(() => {});
     }
-  }, [actor, loadPosts, loadNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actor]);
+
+  const updateUserPhotos = useCallback(
+    async (photos: { url: string; caption: string }[], coverIndex: number) => {
+      setUserState((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          photos,
+          coverPhotoIndex: coverIndex,
+          photoUrl: photos[coverIndex]?.url ?? prev.photoUrl,
+        };
+      });
+      if (!actor) return;
+      try {
+        await actor.updateUserPhotos(photos, BigInt(coverIndex));
+        // Also persist to full profile
+        const currentProfile = await actor.getCallerUserProfile();
+        if (currentProfile) {
+          await actor.saveCallerUserProfile({
+            ...currentProfile,
+            photos: photos,
+            coverPhotoIndex: BigInt(coverIndex),
+            photo: photos[coverIndex]?.url ?? currentProfile.photo,
+          });
+        }
+      } catch (e) {
+        console.warn("updateUserPhotos backend failed", e);
+      }
+    },
+    [actor],
+  );
+
+  const setCoverPhotoIdx = useCallback(
+    async (index: number) => {
+      setUserState((prev) => {
+        if (!prev) return prev;
+        const newPhotoUrl = prev.photos?.[index]?.url ?? prev.photoUrl;
+        return { ...prev, coverPhotoIndex: index, photoUrl: newPhotoUrl };
+      });
+      if (!actor) return;
+      try {
+        await actor.setCoverPhoto(BigInt(index));
+      } catch (e) {
+        console.warn("setCoverPhoto backend failed", e);
+      }
+    },
+    [actor],
+  );
+
+  const setVerificationImageUrl = useCallback(
+    async (url: string) => {
+      setUserState((prev) => (prev ? { ...prev, isVerified: true } : prev));
+      if (!actor) return;
+      try {
+        await actor.setVerificationImage(url);
+      } catch (e) {
+        console.warn("setVerificationImage backend failed", e);
+      }
+    },
+    [actor],
+  );
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -998,6 +1230,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         avatarString: getAvatarString(avatarData),
         chatThemes,
         setChatTheme,
+        // Photo management
+        updateUserPhotos,
+        setCoverPhotoIdx,
+        setVerificationImageUrl,
+        refreshUserProfile,
+        // Chat persistence
+        userId,
+        loadChatMessages,
+        sendChatMessage,
       }}
     >
       {children}

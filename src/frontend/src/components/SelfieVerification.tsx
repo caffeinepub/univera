@@ -1,5 +1,9 @@
+import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useApp } from "../context/AppContext";
+import { useUploadPhoto } from "../hooks/useUploadPhoto";
+import { compressImage } from "../utils/compressImage";
 
 interface SelfieVerificationProps {
   isOpen: boolean;
@@ -14,12 +18,15 @@ export function SelfieVerification({
   onClose,
   onVerified,
 }: SelfieVerificationProps) {
+  const { setVerificationImageUrl } = useApp();
+  const { uploadFile } = useUploadPhoto();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [step, setStep] = useState<Step>("preview");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
 
   // Start camera when opened
   useEffect(() => {
@@ -95,12 +102,21 @@ export function SelfieVerification({
     ctx.drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     setCapturedImage(dataUrl);
+    // Also store as blob for upload
+    canvas.toBlob(
+      (blob) => {
+        if (blob) setCapturedBlob(blob);
+      },
+      "image/jpeg",
+      0.8,
+    );
     setStep("captured");
     stopCamera();
   };
 
   const handleRetake = () => {
     setCapturedImage(null);
+    setCapturedBlob(null);
     setStep("preview");
     // Re-start camera
     navigator.mediaDevices
@@ -115,15 +131,33 @@ export function SelfieVerification({
       });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setStep("confirming");
+    try {
+      let verificationUrl = capturedImage ?? "";
+      if (capturedBlob) {
+        // Compress and upload selfie to blob storage (separate from profile photos)
+        const selfieFile = new File([capturedBlob], "selfie.jpg", {
+          type: "image/jpeg",
+        });
+        const compressed = await compressImage(selfieFile, 800, 0.85).catch(
+          () => selfieFile,
+        );
+        const url = await uploadFile(compressed).catch(
+          () => capturedImage ?? "",
+        );
+        verificationUrl = url;
+      }
+      // Store verification image in backend
+      await setVerificationImageUrl(verificationUrl);
+    } catch {
+      // Non-critical — proceed with verification
+    }
+    setStep("done");
     setTimeout(() => {
-      setStep("done");
-      setTimeout(() => {
-        onVerified();
-        onClose();
-      }, 1400);
-    }, 2000);
+      onVerified();
+      onClose();
+    }, 1400);
   };
 
   const handleClose = () => {
@@ -292,15 +326,18 @@ export function SelfieVerification({
           {step === "confirming" && (
             <div className="px-5 pb-10 text-center">
               <div
-                className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 animate-pulse"
+                className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4"
                 style={{
                   background: "linear-gradient(135deg, #7C3AED, #EC4899)",
                 }}
               >
-                <span className="text-2xl">📷</span>
+                <Loader2 size={28} className="text-white animate-spin" />
               </div>
-              <p className="text-white font-semibold mb-3">
-                Verifying your selfie…
+              <p className="text-white font-semibold mb-1">
+                Uploading &amp; verifying…
+              </p>
+              <p className="text-white/40 text-xs mb-4">
+                Compressing and securing your selfie
               </p>
               <div
                 className="w-full h-1.5 rounded-full overflow-hidden"
@@ -313,7 +350,7 @@ export function SelfieVerification({
                   }}
                   initial={{ width: "0%" }}
                   animate={{ width: "100%" }}
-                  transition={{ duration: 2 }}
+                  transition={{ duration: 4 }}
                 />
               </div>
             </div>

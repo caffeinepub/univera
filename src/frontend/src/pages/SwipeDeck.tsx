@@ -335,9 +335,12 @@ function SwipeCard({
       className="select-none touch-none"
     >
       <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-card-dark">
-        {/* FIX: Full opacity, no brightness reduction */}
+        {/* Cover photo from photos array using coverPhotoIndex, fallback to legacy photo field */}
         <ImgWithFallback
-          src={profile.photo}
+          src={
+            profile.photos?.[Number(profile.coverPhotoIndex ?? 0)]?.url ??
+            profile.photo
+          }
           alt={profile.name}
           className="w-full h-full object-cover"
           fallbackAvatar="🧑"

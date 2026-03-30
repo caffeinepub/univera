@@ -4,10 +4,12 @@ import {
   CheckCircle,
   Edit2,
   HelpCircle,
+  Loader2,
   LogOut,
   Moon,
   Play,
   Plus,
+  RefreshCw,
   Rocket,
   Shield,
   Star,
@@ -17,6 +19,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { AdBanner } from "../components/AdBanner";
 import { AvatarBuilder } from "../components/AvatarBuilder";
 import { BoostButton } from "../components/BoostButton";
@@ -27,6 +30,7 @@ import { SelfieVerification } from "../components/SelfieVerification";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { useApp } from "../context/AppContext";
 import { AVAILABLE_PROMPTS } from "../data/mockData";
+import { useUploadPhoto } from "../hooks/useUploadPhoto";
 
 const ALL_INTERESTS = [
   "Coding",
@@ -76,7 +80,10 @@ export function Profile() {
     avatarData,
     setAvatarData,
     avatarString,
+    updateUserPhotos,
+    setCoverPhotoIdx,
   } = useApp();
+  const { uploadFile } = useUploadPhoto();
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState(user?.bio ?? "");
   const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
@@ -90,9 +97,20 @@ export function Profile() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [activePhotoSlot, setActivePhotoSlot] = useState<number | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const addPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [replaceSlot, setReplaceSlot] = useState<number | null>(null);
   const [showRewardedAd, setShowRewardedAd] = useState(false);
   const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [uploadingLabel, setUploadingLabel] = useState("");
+
+  // Sync photos from user context when user changes
+  useEffect(() => {
+    if (user?.photos && user.photos.length > 0) {
+      setPhotos(user.photos);
+    }
+  }, [user?.photos]);
 
   if (!user) return null;
 
@@ -138,41 +156,27 @@ export function Profile() {
     );
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     setUser({ ...user, bio, interests, promptCards });
-    setEditing(false);
+    await handleSaveCaptions();
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const photoUrl = ev.target?.result as string;
-      setUser({ ...user, photoUrl });
-    };
-    reader.readAsDataURL(file);
-  };
+  // ─── Photo management (blob-storage wired) ─────────────────────────────────
 
-  const handleGridPhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainPhotoChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
-    if (!file || activePhotoSlot === null) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      setPhotos((prev) => {
-        const next = [...prev];
-        if (activePhotoSlot < next.length) {
-          next[activePhotoSlot] = { ...next[activePhotoSlot], url };
-        } else {
-          next.push({ url, caption: "" });
-        }
-        return next;
-      });
-      setActivePhotoSlot(null);
-    };
-    reader.readAsDataURL(file);
+    if (!file || !user) return;
     e.target.value = "";
+    try {
+      const url = await uploadFile(file);
+      setUser({ ...user, photoUrl: url });
+    } catch {
+      // Fallback to local URL
+      const url = URL.createObjectURL(file);
+      setUser({ ...user, photoUrl: url });
+    }
   };
 
   const handleCaptionChange = (index: number, caption: string) => {
@@ -184,8 +188,82 @@ export function Profile() {
     });
   };
 
-  const handleDeletePhoto = (index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  const handleSaveCaptions = async () => {
+    const coverIdx = user.coverPhotoIndex ?? 0;
+    await updateUserPhotos(photos, coverIdx);
+    setEditing(false);
+    toast.success("Profile saved ✨");
+  };
+
+  const handleSetCover = async (index: number) => {
+    await setCoverPhotoIdx(index);
+    toast.success("Cover photo updated 📸");
+  };
+
+  const handleDeletePhoto = async (index: number) => {
+    if (photos.length <= 3) {
+      toast.error("Minimum 3 photos required");
+      return;
+    }
+    const next = photos.filter((_, i) => i !== index);
+    const currentCover = user.coverPhotoIndex ?? 0;
+    const newCover =
+      index === currentCover
+        ? 0
+        : currentCover > index
+          ? currentCover - 1
+          : currentCover;
+    setPhotos(next);
+    await updateUserPhotos(next, newCover);
+    toast.success("Photo removed");
+  };
+
+  const handleReplacePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || replaceSlot === null) return;
+    e.target.value = "";
+    setPhotoUploading(true);
+    setUploadingLabel("Replacing photo…");
+    try {
+      const url = await uploadFile(file);
+      const next = [...photos];
+      next[replaceSlot] = { ...next[replaceSlot], url };
+      setPhotos(next);
+      const coverIdx = user.coverPhotoIndex ?? 0;
+      await updateUserPhotos(next, coverIdx);
+      toast.success("Photo replaced ✨");
+    } catch {
+      toast.error("Upload failed. Try again.");
+    } finally {
+      setPhotoUploading(false);
+      setUploadingLabel("");
+      setReplaceSlot(null);
+    }
+  };
+
+  const handleAddPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (photos.length >= 6) {
+      toast.error("Maximum 6 photos allowed");
+      return;
+    }
+    e.target.value = "";
+    setPhotoUploading(true);
+    setUploadingLabel("Uploading photo…");
+    try {
+      const url = await uploadFile(file);
+      const next = [...photos, { url, caption: "" }];
+      setPhotos(next);
+      const coverIdx = user.coverPhotoIndex ?? 0;
+      await updateUserPhotos(next, coverIdx);
+      toast.success("Photo added ✨");
+    } catch {
+      toast.error("Upload failed. Try again.");
+    } finally {
+      setPhotoUploading(false);
+      setUploadingLabel("");
+    }
   };
 
   const handleReward = (type: "likes" | "superlike", amount: number) => {
@@ -382,7 +460,7 @@ export function Profile() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={handlePhotoChange}
+              onChange={handleMainPhotoChange}
               data-ocid="profile.dropzone"
             />
           </div>
@@ -583,126 +661,191 @@ export function Profile() {
           </div>
         )}
 
-        {/* ─ My Photos ───────────────────────────────────────────────────────────────────────────────────────────── */}
+        {/* ─ My Photos ──────────────────────────────────────────────────────── */}
         <div className="px-5 mb-4">
-          <h3 className="font-semibold text-sm text-muted-foreground mb-3">
-            My Photos{" "}
-            <span className="ml-1 text-xs opacity-60">{photos.length}/6</span>
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm text-muted-foreground">
+              My Photos{" "}
+              <span className="ml-1 text-xs opacity-60">{photos.length}/6</span>
+            </h3>
+            {editing && photos.length < 6 && (
+              <button
+                type="button"
+                onClick={() => addPhotoInputRef.current?.click()}
+                disabled={photoUploading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                }}
+                data-ocid="profile.upload_button"
+              >
+                {photoUploading && uploadingLabel === "Uploading photo…" ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : (
+                  <Plus size={11} />
+                )}
+                Add Photo
+              </button>
+            )}
+          </div>
+
+          {/* Upload progress */}
+          {photoUploading && (
+            <div
+              className="mb-3 px-3 py-2 rounded-xl flex items-center gap-2"
+              style={{
+                background: "rgba(139,92,246,0.08)",
+                border: "1px solid rgba(139,92,246,0.2)",
+              }}
+              data-ocid="profile.loading_state"
+            >
+              <Loader2 size={13} className="animate-spin text-primary" />
+              <span className="text-xs font-medium text-primary">
+                {uploadingLabel}
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
-            {["p1", "p2", "p3", "p4", "p5", "p6"].map((slotId, i) => {
-              const photo = photos[i];
+            {photos.map((photo, i) => {
+              const isCover = (user.coverPhotoIndex ?? 0) === i;
               return (
                 <motion.div
-                  key={slotId}
+                  key={photo.url || `photo-slot-${i}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
                   className="flex flex-col gap-1"
                   data-ocid={`profile.item.${i + 1}`}
                 >
-                  {photo ? (
-                    <>
-                      <div className="relative aspect-[3/4] rounded-2xl overflow-hidden">
-                        <ImgWithFallback
-                          src={photo.url}
-                          alt="User uploaded content"
-                          className="w-full h-full object-cover"
-                          fallbackAvatar={avatarString}
-                        />
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 60%)",
-                          }}
-                        />
-                        {editing && (
+                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden">
+                    <ImgWithFallback
+                      src={photo.url}
+                      alt="Profile photo"
+                      className="w-full h-full object-cover"
+                      fallbackAvatar={avatarString}
+                    />
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          "linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 55%)",
+                      }}
+                    />
+                    {/* Cover badge */}
+                    {isCover && (
+                      <div
+                        className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                        style={{ background: "rgba(124,58,237,0.85)" }}
+                      >
+                        Cover
+                      </div>
+                    )}
+                    {editing && (
+                      <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+                        {/* Delete */}
+                        {photos.length > 3 && (
                           <button
                             type="button"
                             onClick={() => handleDeletePhoto(i)}
-                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
+                            className="w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
                             data-ocid={`profile.delete_button.${i + 1}`}
                           >
-                            <X size={12} />
+                            <X size={11} />
                           </button>
                         )}
+                        {/* Replace */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplaceSlot(i);
+                            replaceInputRef.current?.click();
+                          }}
+                          disabled={photoUploading}
+                          className="w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-blue-500/80 transition-colors disabled:opacity-50"
+                          data-ocid={`profile.edit_button.${i + 1}`}
+                        >
+                          <RefreshCw size={11} />
+                        </button>
                       </div>
-                      {editing ? (
-                        <input
-                          type="text"
-                          value={photo.caption}
-                          onChange={(e) =>
-                            handleCaptionChange(i, e.target.value)
-                          }
-                          placeholder="Add a caption..."
-                          maxLength={60}
-                          className="w-full px-2 py-1 rounded-lg text-xs bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      ) : (
-                        photo.caption && (
-                          <span className="px-2.5 py-1 rounded-lg text-xs font-medium glass-card text-foreground truncate">
-                            {photo.caption}
-                          </span>
-                        )
-                      )}
-                    </>
-                  ) : (
-                    <>
+                    )}
+                    {/* Set as Cover (bottom) */}
+                    {editing && !isCover && (
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!editing) return;
-                          setActivePhotoSlot(i);
-                          photoInputRef.current?.click();
-                        }}
-                        className="aspect-[3/4] rounded-2xl flex flex-col items-center justify-center transition-all hover:scale-105 active:scale-95"
+                        onClick={() => handleSetCover(i)}
+                        className="absolute bottom-2 left-2 right-2 py-1 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
                         style={{
-                          background: editing
-                            ? "rgba(255,255,255,0.04)"
-                            : "rgba(255,255,255,0.02)",
-                          border: editing
-                            ? `2px dashed rgba(${isBff ? "234,179,8" : "139,92,246"},0.4)`
-                            : "2px dashed rgba(255,255,255,0.08)",
-                          cursor: editing ? "pointer" : "default",
+                          background: "rgba(0,0,0,0.55)",
+                          backdropFilter: "blur(4px)",
                         }}
-                        data-ocid="profile.upload_button"
+                        data-ocid={`profile.save_button.${i + 1}`}
                       >
-                        {editing ? (
-                          <>
-                            <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center mb-2"
-                              style={{ background: gradientStyle }}
-                            >
-                              <Plus size={20} className="text-white" />
-                            </div>
-                            <span className="text-xs text-muted-foreground font-medium">
-                              Add photo
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground/30 text-2xl">
-                            +
-                          </span>
-                        )}
+                        ⭐ Set as Cover
                       </button>
-                      {editing && <div className="h-6" />}
-                    </>
+                    )}
+                  </div>
+                  {editing ? (
+                    <input
+                      type="text"
+                      value={photo.caption}
+                      onChange={(e) => handleCaptionChange(i, e.target.value)}
+                      placeholder="Add a caption..."
+                      maxLength={60}
+                      className="w-full px-2 py-1 rounded-lg text-xs bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-ocid="profile.input"
+                    />
+                  ) : (
+                    photo.caption && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-medium glass-card text-foreground truncate">
+                        {photo.caption}
+                      </span>
+                    )
                   )}
                 </motion.div>
               );
             })}
+
+            {/* Add photo slot */}
+            {photos.length < 6 && !editing && (
+              <div
+                className="aspect-[3/4] rounded-2xl flex flex-col items-center justify-center"
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  border: "2px dashed rgba(255,255,255,0.08)",
+                }}
+              >
+                <span className="text-muted-foreground/30 text-2xl">+</span>
+              </div>
+            )}
           </div>
+
+          {/* Hidden file inputs */}
           <input
             ref={photoInputRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/*"
             className="hidden"
-            onChange={handleGridPhotoAdd}
+            onChange={handleAddPhoto}
           />
+          <input
+            ref={addPhotoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAddPhoto}
+          />
+          <input
+            ref={replaceInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleReplacePhoto}
+          />
+
           {!editing && photos.length === 0 && (
             <p className="text-xs text-muted-foreground text-center mt-3">
-              Tap the edit icon to add up to 6 photos
+              Tap the edit icon ✏️ to add up to 6 photos
             </p>
           )}
         </div>

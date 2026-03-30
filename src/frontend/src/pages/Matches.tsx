@@ -168,7 +168,10 @@ export function Matches() {
               >
                 <div className="relative flex-shrink-0">
                   <ImgWithFallback
-                    src={profile.photo}
+                    src={
+                      profile.photos?.[Number(profile.coverPhotoIndex ?? 0)]
+                        ?.url ?? profile.photo
+                    }
                     alt={profile.name}
                     className="w-14 h-14 rounded-full object-cover neon-border-violet"
                     fallbackAvatar="🧑"

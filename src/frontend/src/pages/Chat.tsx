@@ -25,12 +25,21 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import type { ChatMessage } from "../backend.d";
 import { EmojiStickerPicker } from "../components/EmojiStickerPicker";
 import { ImgWithFallback } from "../components/ImgWithFallback";
 import { ReportModal } from "../components/ReportModal";
 import { ScreenshotDetector } from "../components/ScreenshotDetector";
 import { useApp } from "../context/AppContext";
-import { ICEBREAKERS, MESSAGES, PROFILES } from "../data/mockData";
+import {
+  ICEBREAKERS,
+  MESSAGES,
+  type Message,
+  PROFILES,
+} from "../data/mockData";
+import { useActor } from "../hooks/useActor";
+import { useChatPolling } from "../hooks/useChatPolling";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 const AI_POOLS = {
   hobbies: [
@@ -67,6 +76,26 @@ function formatCountdown(ms: number): string {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
   return `${h}h ${m}m`;
+}
+
+function formatMsgTime(nanoseconds: bigint): string {
+  return new Date(Number(nanoseconds / 1_000_000n)).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function convertBackendMsg(m: ChatMessage, myPrincipalStr: string): Message {
+  return {
+    id: m.msgId,
+    matchId: m.matchId,
+    senderId:
+      m.senderUserId.toString() === myPrincipalStr
+        ? "me"
+        : m.senderUserId.toString(),
+    text: m.text,
+    timestamp: formatMsgTime(m.sentAt),
+  };
 }
 
 const CHAT_THEMES: Record<
@@ -124,19 +153,41 @@ export function Chat() {
     chatThemes,
     setChatTheme,
     avatarString,
+    loadChatMessages,
+    sendChatMessage,
   } = useApp();
+
+  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
 
   const match = matches.find((m) => m.id === id) ?? matches[0];
   const profile =
     PROFILES.find((p) => p.id === match?.profileId) ?? PROFILES[2];
 
-  const [messages, setMessages] = useState(
-    MESSAGES[match?.id ?? "m1"] ?? MESSAGES.m1,
+  // Determine if this is a demo chat (use mock messages) or real (use backend)
+  const isDemo = profile.isDemo ?? true;
+
+  // ─── Message state ─────────────────────────────────────────────────────
+  const [messages, setMessages] = useState<Message[]>(() =>
+    isDemo ? (MESSAGES[match?.id ?? "m1"] ?? MESSAGES.m1) : [],
   );
+  const [messagesLoaded, setMessagesLoaded] = useState(isDemo);
+  const [lastTimestamp, setLastTimestamp] = useState<bigint>(0n);
+
   const [input, setInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // ─── "New chat system activated" banner (shows once on first chat open) ───
+  const [showActivatedBanner, setShowActivatedBanner] = useState(() => {
+    const activated = localStorage.getItem("univera_chat_backend_activated");
+    if (!activated) {
+      localStorage.setItem("univera_chat_backend_activated", "1");
+      return true;
+    }
+    return false;
+  });
 
   // Female-first messaging
   const [firstMessageSentLocal, setFirstMessageSentLocal] = useState(false);
@@ -161,6 +212,50 @@ export function Chat() {
     return () => clearInterval(t);
   }, [createdTime, firstMessageSentLocal]);
 
+  // ─── Load messages from backend on mount (real profiles only) ───────────────
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional - only run on matchId change
+  useEffect(() => {
+    if (isDemo || !match) return;
+    // Capture load time BEFORE the async call so polling starts from this point
+    const loadTime = BigInt(Date.now()) * 1_000_000n;
+    loadChatMessages(match.id)
+      .then((msgs) => {
+        setMessages(msgs);
+        setLastTimestamp(loadTime);
+        setMessagesLoaded(true);
+      })
+      .catch(() => {
+        setLastTimestamp(loadTime);
+        setMessagesLoaded(true);
+      });
+  }, [isDemo, match?.id]);
+
+  // ─── Polling for new messages (real profiles only) ────────────────────────
+  const { newMessages, resetPolling } = useChatPolling({
+    actor,
+    matchId: match?.id ?? "",
+    isDemo,
+    enabled: messagesLoaded && !isDemo,
+    afterTimestamp: lastTimestamp,
+  });
+
+  // Append polled messages to state, deduplicating by id
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetPolling is stable
+  useEffect(() => {
+    if (newMessages.length === 0) return;
+    const myPrincipalStr = identity?.getPrincipal().toString() ?? "";
+    const converted = newMessages.map((m) =>
+      convertBackendMsg(m, myPrincipalStr),
+    );
+    setMessages((prev) => {
+      const existingIds = new Set(prev.map((m) => m.id));
+      const toAdd = converted.filter((m) => !existingIds.has(m.id));
+      if (toAdd.length === 0) return prev;
+      return [...prev, ...toAdd];
+    });
+    resetPolling();
+  }, [newMessages]);
+
   // Menu state
   const [reportOpen, setReportOpen] = useState(false);
   const [blockAlertOpen, setBlockAlertOpen] = useState(false);
@@ -176,44 +271,79 @@ export function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = (text: string) => {
+  // ─── Send function ──────────────────────────────────────────────────────
+  const send = async (text: string) => {
     if (!text.trim()) return;
     if (isMaleWaiting || matchExpired) return;
-    const msg = {
-      id: String(Date.now()),
-      matchId: match?.id ?? "m1",
-      senderId: "me",
-      text: text.trim(),
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-    setMessages((p) => [...p, msg]);
-    setInput("");
-    if (user?.gender === "female" && !firstMessageSentLocal) {
-      setFirstMessageSentLocal(true);
-    }
-    setTimeout(() => {
-      const replies = [
-        "That's so cool! 😊",
-        "Haha yes exactly!",
-        "We should definitely hang out!",
-        "Tell me more about that 👀",
-        "Same here honestly 😂",
-      ];
-      const reply = {
-        id: String(Date.now() + 1),
+
+    if (isDemo) {
+      // ─── Demo profile: local state + simulated auto-reply ───
+      const msg: Message = {
+        id: String(Date.now()),
         matchId: match?.id ?? "m1",
-        senderId: profile.id,
-        text: replies[Math.floor(Math.random() * replies.length)],
+        senderId: "me",
+        text: text.trim(),
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
       };
-      setMessages((p) => [...p, reply]);
-    }, 1200);
+      setMessages((p) => [...p, msg]);
+      setInput("");
+      if (user?.gender === "female" && !firstMessageSentLocal) {
+        setFirstMessageSentLocal(true);
+      }
+      setTimeout(() => {
+        const replies = [
+          "That's so cool! 😊",
+          "Haha yes exactly!",
+          "We should definitely hang out!",
+          "Tell me more about that 👀",
+          "Same here honestly 😂",
+        ];
+        const reply: Message = {
+          id: String(Date.now() + 1),
+          matchId: match?.id ?? "m1",
+          senderId: profile.id,
+          text: replies[Math.floor(Math.random() * replies.length)],
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+        setMessages((p) => [...p, reply]);
+      }, 1200);
+    } else {
+      // ─── Real profile: optimistic update + backend persist ───
+      // Generate a deterministic msgId used for both optimistic UI and backend
+      const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const optimisticMsg: Message = {
+        id: msgId,
+        matchId: match?.id ?? "",
+        senderId: "me",
+        text: text.trim(),
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      setMessages((p) => [...p, optimisticMsg]);
+      setInput("");
+
+      const success = await sendChatMessage(
+        match?.id ?? "",
+        text.trim(),
+        msgId,
+      );
+      if (success) {
+        if (user?.gender === "female" && !firstMessageSentLocal) {
+          setFirstMessageSentLocal(true);
+        }
+      } else {
+        // Remove failed optimistic message
+        setMessages((p) => p.filter((m) => m.id !== msgId));
+      }
+    }
   };
 
   const pickFromPool = (pool: keyof typeof AI_POOLS) => {
@@ -431,6 +561,25 @@ export function Chat() {
         </div>
       )}
 
+      {/* Backend activation banner — shown once on first chat open */}
+      {showActivatedBanner && (
+        <div
+          className="px-4 py-2 text-center text-xs flex-shrink-0 text-green-400 bg-green-500/10 border-b border-green-500/20"
+          data-ocid="chat.success_state"
+        >
+          💬 New chat system activated — your messages now persist across
+          devices
+          <button
+            type="button"
+            onClick={() => setShowActivatedBanner(false)}
+            className="ml-2 text-green-400/60 hover:text-green-400"
+            data-ocid="chat.close_button"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Icebreakers */}
       <div className="px-4 py-2 flex gap-2 overflow-x-auto flex-shrink-0 no-scrollbar">
         <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
@@ -453,6 +602,18 @@ export function Chat() {
       <div
         className={`flex-1 overflow-y-auto px-4 py-2 space-y-3 ${activeTheme.bg}`}
       >
+        {/* Loading state for real profiles */}
+        {!isDemo && !messagesLoaded && (
+          <div
+            className="flex items-center justify-center py-8"
+            data-ocid="chat.loading_state"
+          >
+            <div className="text-xs text-muted-foreground animate-pulse">
+              Loading messages...
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, i) => {
           const isMe = msg.senderId === "me";
           const isSticker = msg.text.startsWith("/assets/");
@@ -495,7 +656,9 @@ export function Chat() {
                 >
                   <p className="text-sm leading-relaxed">{msg.text}</p>
                   <p
-                    className={`text-[10px] mt-1 ${isMe ? "text-white/60" : "text-muted-foreground"}`}
+                    className={`text-[10px] mt-1 ${
+                      isMe ? "text-white/60" : "text-muted-foreground"
+                    }`}
                   >
                     {msg.timestamp}
                   </p>
@@ -609,7 +772,7 @@ export function Chat() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send(input)}
+            onKeyDown={(e) => e.key === "Enter" && void send(input)}
             placeholder={
               matchExpired
                 ? "Match expired 💔"
@@ -628,7 +791,7 @@ export function Chat() {
           />
           <button
             type="button"
-            onClick={() => send(input)}
+            onClick={() => void send(input)}
             disabled={!input.trim() || inputDisabled}
             className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
             style={{

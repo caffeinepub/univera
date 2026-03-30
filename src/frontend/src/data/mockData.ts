@@ -17,6 +17,7 @@ export interface Profile {
   interests: string[];
   photo: string;
   photos?: { url: string; caption: string }[];
+  coverPhotoIndex?: number;
   promptCards?: PromptCard[];
   distance: string;
   online: boolean;
@@ -24,6 +25,7 @@ export interface Profile {
   isPro?: boolean;
   personality?: string;
   isVerified?: boolean;
+  isDemo?: boolean;
 }
 
 export interface Match {
@@ -97,6 +99,7 @@ export const PROFILES: Profile[] = [
     distance: "2.1 km",
     online: true,
     compatibility: 94,
+    isDemo: true,
   },
   {
     id: "2",
@@ -142,6 +145,7 @@ export const PROFILES: Profile[] = [
     distance: "0.8 km",
     online: true,
     compatibility: 87,
+    isDemo: true,
   },
   {
     id: "3",
@@ -182,6 +186,7 @@ export const PROFILES: Profile[] = [
     distance: "1.4 km",
     online: false,
     compatibility: 91,
+    isDemo: true,
   },
   {
     id: "4",
@@ -228,6 +233,7 @@ export const PROFILES: Profile[] = [
     distance: "3.2 km",
     online: true,
     compatibility: 78,
+    isDemo: true,
   },
   {
     id: "5",
@@ -269,6 +275,7 @@ export const PROFILES: Profile[] = [
     distance: "0.5 km",
     online: true,
     compatibility: 85,
+    isDemo: true,
   },
   {
     id: "6",
@@ -314,6 +321,7 @@ export const PROFILES: Profile[] = [
     distance: "4.1 km",
     online: false,
     compatibility: 82,
+    isDemo: true,
   },
   {
     id: "7",
@@ -360,6 +368,7 @@ export const PROFILES: Profile[] = [
     distance: "1.9 km",
     online: true,
     compatibility: 88,
+    isDemo: true,
   },
   {
     id: "8",
@@ -401,6 +410,7 @@ export const PROFILES: Profile[] = [
     distance: "2.7 km",
     online: false,
     compatibility: 76,
+    isDemo: true,
     isPro: true,
   },
 ];

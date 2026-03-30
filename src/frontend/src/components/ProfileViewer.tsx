@@ -122,7 +122,11 @@ export function ProfileViewer({
 
   if (!profile) return null;
 
-  const mainPhoto = profile.photos?.[0]?.url ?? profile.photo;
+  const coverIdx = Number((profile as any).coverPhotoIndex ?? 0);
+  const mainPhoto =
+    profile.photos?.[coverIdx]?.url ??
+    profile.photos?.[0]?.url ??
+    profile.photo;
   const avatarOrDefault = avatarString || "🧑";
 
   const photos = profile.photos?.length
@@ -291,30 +295,45 @@ export function ProfileViewer({
               </div>
             </div>
 
-            {/* Main profile photo */}
+            {/* Main profile photo — clean card style */}
             <div className="px-4 pt-4">
               <div
                 className="rounded-2xl overflow-hidden relative"
-                style={{ aspectRatio: "3/4" }}
+                style={{
+                  aspectRatio: "3/4",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+                }}
               >
                 <ImgWithFallback
                   src={mainPhoto}
                   alt={profile.name}
                   className="w-full h-full object-cover"
+                  style={{ opacity: 1 }}
                   fallbackAvatar={avatarOrDefault}
                 />
+                {/* Soft gradient overlay — bottom only, no fog */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.18) 40%, transparent 65%)",
+                  }}
+                />
+                {photos[0]?.caption && (
+                  <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-6">
+                    <p
+                      className="text-white text-sm font-medium leading-snug"
+                      style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+                    >
+                      {photos[0].caption}
+                    </p>
+                  </div>
+                )}
               </div>
-              {photos[0]?.caption && (
-                <div className="mt-2 mb-3 px-1">
-                  <p className="text-gray-700 text-sm italic">
-                    "{photos[0].caption}"
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Feed (photos 2+ and prompts interspersed) */}
-            <div className="px-4 pt-2 pb-4 space-y-4">
+            <div className="px-4 pt-4 pb-4 space-y-4">
               {feed.slice(1).map((item, feedIdx) => {
                 if (item.type === "photo") {
                   const key = `photo-${item.idx}`;
@@ -325,73 +344,90 @@ export function ProfileViewer({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: feedIdx * 0.06 }}
-                      className="space-y-2"
                       data-ocid={`profile.item.${item.idx + 1}`}
                     >
+                      {/* Photo with soft gradient overlay + caption */}
                       <div
                         className="rounded-2xl overflow-hidden relative"
-                        style={{ aspectRatio: "3/4" }}
+                        style={{
+                          aspectRatio: "3/4",
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                        }}
                       >
                         <ImgWithFallback
                           src={item.url}
                           alt={`${profile.name} ${item.idx + 1}`}
                           className="w-full h-full object-cover"
-                          fallbackAvatar={avatarOrDefault}
-                          style={
-                            isLocked
+                          style={{
+                            opacity: 1,
+                            ...(isLocked
                               ? {
                                   filter: "blur(18px)",
                                   transform: "scale(1.05)",
                                 }
-                              : {}
-                          }
+                              : {}),
+                          }}
+                          fallbackAvatar={avatarOrDefault}
                         />
-                        {isLocked && (
+                        {!isLocked && (
+                          <div
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                              background:
+                                "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.18) 40%, transparent 65%)",
+                            }}
+                          />
+                        )}
+                        {isLocked ? (
                           <div
                             className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-                            style={{
-                              background: "rgba(91,33,182,0.45)",
-                              backdropFilter: "blur(2px)",
-                            }}
+                            style={{ background: "rgba(91,33,182,0.45)" }}
                           >
                             <span className="text-3xl">🔒</span>
                             <p className="text-white font-bold text-sm">
                               Match to unlock
                             </p>
                           </div>
+                        ) : (
+                          item.caption && (
+                            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-6 flex items-end justify-between gap-3">
+                              <p
+                                className="text-white text-sm font-medium leading-snug flex-1"
+                                style={{
+                                  textShadow: "0 2px 6px rgba(0,0,0,0.6)",
+                                }}
+                              >
+                                {item.caption}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleLike(key, `"${item.caption}"`)
+                                }
+                                className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+                                style={{
+                                  background: likedCards[key]
+                                    ? "rgba(236,72,153,0.35)"
+                                    : "rgba(255,255,255,0.2)",
+                                  border: likedCards[key]
+                                    ? "1px solid rgba(236,72,153,0.6)"
+                                    : "1px solid rgba(255,255,255,0.4)",
+                                  backdropFilter: "blur(4px)",
+                                }}
+                              >
+                                <Heart
+                                  size={16}
+                                  style={{
+                                    color: likedCards[key]
+                                      ? "#EC4899"
+                                      : "white",
+                                  }}
+                                  fill={likedCards[key] ? "#EC4899" : "none"}
+                                />
+                              </button>
+                            </div>
+                          )
                         )}
-                      </div>
-                      <div
-                        className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3"
-                        style={{
-                          background: "rgba(255,255,255,0.9)",
-                          border: "1px solid rgba(139,92,246,0.15)",
-                        }}
-                      >
-                        <p className="text-gray-700 text-sm leading-relaxed italic flex-1">
-                          "{item.caption}"
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleLike(key, `"${item.caption}"`)}
-                          className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-                          style={{
-                            background: likedCards[key]
-                              ? "rgba(236,72,153,0.15)"
-                              : "rgba(139,92,246,0.08)",
-                            border: likedCards[key]
-                              ? "1px solid rgba(236,72,153,0.4)"
-                              : "1px solid rgba(139,92,246,0.2)",
-                          }}
-                        >
-                          <Heart
-                            size={16}
-                            style={{
-                              color: likedCards[key] ? "#EC4899" : "#7C3AED",
-                            }}
-                            fill={likedCards[key] ? "#EC4899" : "none"}
-                          />
-                        </button>
                       </div>
                     </motion.div>
                   );
@@ -484,31 +520,49 @@ export function ProfileViewer({
                 </p>
               </div>
 
-              {/* Photos Gallery (all photos with captions) */}
-              {profile.photos && profile.photos.length > 0 && (
+              {/* Photos Gallery — clean card style with gradient overlay */}
+              {profile.photos && profile.photos.length > 1 && (
                 <div className="pb-2">
                   <h3 className="text-sm font-semibold mb-3 text-purple-500 uppercase tracking-wider px-1">
                     Photos
                   </h3>
                   <div className="space-y-3">
-                    {profile.photos.map((photo, index) => (
+                    {profile.photos.slice(1).map((photo, index) => (
                       <div
                         key={photo.url || String(index)}
-                        className="rounded-2xl overflow-hidden"
-                        data-ocid={`profile.item.${index + 1}`}
+                        className="rounded-2xl overflow-hidden relative"
+                        style={{
+                          aspectRatio: "3/4",
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                        }}
+                        data-ocid={`profile.item.${index + 2}`}
                       >
-                        <div className="relative aspect-square">
-                          <ImgWithFallback
-                            src={photo.url}
-                            alt={`Photo ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            fallbackAvatar={avatarOrDefault}
-                          />
-                        </div>
+                        <ImgWithFallback
+                          src={photo.url}
+                          alt={`Photo ${index + 2}`}
+                          className="w-full h-full object-cover"
+                          style={{ opacity: 1 }}
+                          fallbackAvatar={avatarOrDefault}
+                        />
+                        {/* Soft gradient overlay */}
+                        <div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            background:
+                              "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.18) 40%, transparent 65%)",
+                          }}
+                        />
                         {photo.caption && (
-                          <p className="text-sm text-gray-600 mt-2 px-1 pb-1">
-                            {photo.caption}
-                          </p>
+                          <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-6">
+                            <p
+                              className="text-white text-sm font-medium leading-snug"
+                              style={{
+                                textShadow: "0 2px 6px rgba(0,0,0,0.6)",
+                              }}
+                            >
+                              {photo.caption}
+                            </p>
+                          </div>
                         )}
                       </div>
                     ))}

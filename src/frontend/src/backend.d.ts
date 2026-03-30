@@ -16,14 +16,15 @@ export interface Comment {
     timestamp: Time;
     postId: string;
 }
-export interface Report {
-    isReviewed: boolean;
-    reportedUserId: Principal;
-    reportedAt: Time;
-    reporterUserId: Principal;
-    details: string;
-    reportId: string;
-    reason: string;
+export interface Match {
+    screenshotAttemptFlag: boolean;
+    matchCreatedTime: Time;
+    matchId: string;
+    isMatched: boolean;
+    user1: Principal;
+    user2: Principal;
+    chatDeleted: boolean;
+    firstMessageSent: boolean;
 }
 export interface FeedPost {
     id: string;
@@ -39,21 +40,24 @@ export interface FeedPost {
     likesCount: bigint;
     promptAnswer?: string;
 }
-export interface Match {
-    screenshotAttemptFlag: boolean;
-    matchCreatedTime: Time;
-    matchId: string;
-    isMatched: boolean;
-    user1: Principal;
-    user2: Principal;
-    chatDeleted: boolean;
-    firstMessageSent: boolean;
+export interface UserPhoto {
+    url: string;
+    caption: string;
 }
 export interface PostData {
     key: string;
     didLike: boolean;
     post: FeedPost;
     likesCount: bigint;
+}
+export interface Report {
+    isReviewed: boolean;
+    reportedUserId: Principal;
+    reportedAt: Time;
+    reporterUserId: Principal;
+    details: string;
+    reportId: string;
+    reason: string;
 }
 export interface Notification {
     id: string;
@@ -74,11 +78,16 @@ export interface ChatMessage {
 }
 export interface UserProfile {
     age: bigint;
+    avatarData?: string;
     name: string;
+    isDemo: boolean;
     isVerified: boolean;
     gender: string;
+    coverPhotoIndex: bigint;
     photo: string;
     planType: string;
+    photos: Array<UserPhoto>;
+    verificationImage?: string;
 }
 export enum NotificationType {
     likePost = "likePost",
@@ -95,13 +104,7 @@ export interface backendInterface {
     addComment(postId: string, comment: Comment, key: string): Promise<void>;
     addNotification(notification: Notification, key: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    /**
-     * / Matches System
-     */
     createMatch(user1: Principal, user2: Principal, matchId: string): Promise<Match>;
-    /**
-     * / Messaging System
-     */
     createMessage(incomingMsg: ChatMessage, key: string): Promise<{
         __kind__: "message";
         message: {
@@ -119,9 +122,6 @@ export interface backendInterface {
     flagScreenshotAttempt(matchId: string): Promise<void>;
     getBlockedUsers(userId: Principal): Promise<Array<Principal>>;
     getBlockingUsers(userId: Principal): Promise<Array<Principal>>;
-    /**
-     * / User Profile Functions
-     */
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getComments(postId: string): Promise<Array<Comment>>;
@@ -130,9 +130,6 @@ export interface backendInterface {
     getMatches(): Promise<Array<Match>>;
     getMessages(matchId: string): Promise<Array<ChatMessage>>;
     getNotifications(userId: Principal): Promise<Array<Notification>>;
-    /**
-     * / Core Functions
-     */
     getPosts(): Promise<Array<PostData>>;
     getPostsCreatedToday(userId: Principal): Promise<bigint>;
     getReports(): Promise<Array<Report>>;
@@ -142,15 +139,11 @@ export interface backendInterface {
     likePost(postId: string): Promise<bigint | null>;
     markNotificationsRead(userId: Principal): Promise<void>;
     markReportReviewed(reportId: string): Promise<void>;
-    /**
-     * / Report System
-     */
     reportUser(id: string, reportedUserId: Principal, reportType: string, details: string): Promise<void>;
     resetDailyLimits(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    /**
-     * / Block System
-     */
+    setCoverPhoto(index: bigint): Promise<void>;
+    setVerificationImage(url: string): Promise<void>;
     toggleBlock(targetUserId: Principal): Promise<{
         __kind__: "blockedSuccessfully";
         blockedSuccessfully: boolean;
@@ -160,4 +153,8 @@ export interface backendInterface {
     }>;
     unlikePost(postId: string): Promise<bigint | null>;
     updatePostsCreatedToday(userId: Principal): Promise<void>;
+    updateUserPhotos(photos: Array<UserPhoto>, coverIndex: bigint): Promise<void>;
+    getMessagesAfter(matchId: string, afterTimestamp: bigint): Promise<Array<ChatMessage>>;
+    saveChatTheme(matchId: string, theme: string): Promise<void>;
+    getChatThemes(): Promise<Array<[string, string]>>;
 }

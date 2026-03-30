@@ -79,13 +79,19 @@ export interface Report {
   'reason' : string,
 }
 export type Time = bigint;
+export interface UserPhoto { 'url' : string, 'caption' : string }
 export interface UserProfile {
   'age' : bigint,
+  'avatarData' : [] | [string],
   'name' : string,
+  'isDemo' : boolean,
   'isVerified' : boolean,
   'gender' : string,
+  'coverPhotoIndex' : bigint,
   'photo' : string,
   'planType' : string,
+  'photos' : Array<UserPhoto>,
+  'verificationImage' : [] | [string],
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -121,13 +127,7 @@ export interface _SERVICE {
   'addComment' : ActorMethod<[string, Comment, string], undefined>,
   'addNotification' : ActorMethod<[Notification, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  /**
-   * / Matches System
-   */
   'createMatch' : ActorMethod<[Principal, Principal, string], Match>,
-  /**
-   * / Messaging System
-   */
   'createMessage' : ActorMethod<
     [ChatMessage, string],
     {
@@ -149,9 +149,6 @@ export interface _SERVICE {
   'flagScreenshotAttempt' : ActorMethod<[string], undefined>,
   'getBlockedUsers' : ActorMethod<[Principal], Array<Principal>>,
   'getBlockingUsers' : ActorMethod<[Principal], Array<Principal>>,
-  /**
-   * / User Profile Functions
-   */
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getComments' : ActorMethod<[string], Array<Comment>>,
@@ -160,9 +157,6 @@ export interface _SERVICE {
   'getMatches' : ActorMethod<[], Array<Match>>,
   'getMessages' : ActorMethod<[string], Array<ChatMessage>>,
   'getNotifications' : ActorMethod<[Principal], Array<Notification>>,
-  /**
-   * / Core Functions
-   */
   'getPosts' : ActorMethod<[], Array<PostData>>,
   'getPostsCreatedToday' : ActorMethod<[Principal], bigint>,
   'getReports' : ActorMethod<[], Array<Report>>,
@@ -172,15 +166,11 @@ export interface _SERVICE {
   'likePost' : ActorMethod<[string], [] | [bigint]>,
   'markNotificationsRead' : ActorMethod<[Principal], undefined>,
   'markReportReviewed' : ActorMethod<[string], undefined>,
-  /**
-   * / Report System
-   */
   'reportUser' : ActorMethod<[string, Principal, string, string], undefined>,
   'resetDailyLimits' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  /**
-   * / Block System
-   */
+  'setCoverPhoto' : ActorMethod<[bigint], undefined>,
+  'setVerificationImage' : ActorMethod<[string], undefined>,
   'toggleBlock' : ActorMethod<
     [Principal],
     { 'blockedSuccessfully' : boolean } |
@@ -188,6 +178,10 @@ export interface _SERVICE {
   >,
   'unlikePost' : ActorMethod<[string], [] | [bigint]>,
   'updatePostsCreatedToday' : ActorMethod<[Principal], undefined>,
+  'updateUserPhotos' : ActorMethod<[Array<UserPhoto>, bigint], undefined>,
+  'getMessagesAfter' : ActorMethod<[string, bigint], Array<ChatMessage>>,
+  'saveChatTheme' : ActorMethod<[string, string], undefined>,
+  'getChatThemes' : ActorMethod<[], Array<[string, string]>>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
