@@ -335,27 +335,30 @@ function SwipeCard({
       className="select-none touch-none"
     >
       <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-card-dark">
+        {/* FIX: Full opacity, no brightness reduction */}
         <ImgWithFallback
           src={profile.photo}
           alt={profile.name}
           className="w-full h-full object-cover"
           fallbackAvatar="🧑"
           draggable={false}
+          style={{ opacity: 1 }}
         />
+        {/* FIX: Soft gradient overlay instead of heavy black */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 45%, transparent 70%)",
+              "linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.2), transparent)",
           }}
         />
 
+        {/* FIX: Removed backdropFilter blur from AI Match badge */}
         <div
           className="absolute top-4 right-4 rounded-full px-3 py-1.5 flex items-center gap-1.5"
           style={{
             background:
               "linear-gradient(135deg, rgba(124,58,237,0.85), rgba(236,72,153,0.85))",
-            backdropFilter: "blur(8px)",
             border: "1px solid rgba(255,255,255,0.2)",
           }}
         >
@@ -430,7 +433,6 @@ function SwipeCard({
               className="mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
               style={{
                 background: "rgba(255,255,255,0.18)",
-                backdropFilter: "blur(8px)",
                 border: "1px solid rgba(255,255,255,0.3)",
                 color: "#fff",
               }}
@@ -440,7 +442,11 @@ function SwipeCard({
             </button>
           )}
           <div className="flex items-end justify-between mb-1">
-            <h2 className="font-display text-3xl font-black text-white">
+            {/* FIX: font-black (900) + text shadow for name */}
+            <h2
+              className="font-display text-3xl font-black text-white"
+              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+            >
               {profile.name}, {profile.age}
             </h2>
             {profile.online && (
@@ -452,15 +458,26 @@ function SwipeCard({
               </div>
             )}
           </div>
-          <p className="text-white/80 text-sm mb-1">
+          {/* FIX: text shadow on major/year */}
+          <p
+            className="text-white/80 text-sm mb-1"
+            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+          >
             {profile.major} · {profile.year}
           </p>
-          <p className="text-white/70 text-xs mb-3">{profile.bio}</p>
+          {/* FIX: text shadow on bio */}
+          <p
+            className="text-white/70 text-xs mb-3"
+            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+          >
+            {profile.bio}
+          </p>
+          {/* FIX: Removed backdrop-blur-sm from interest tags */}
           <div className="flex flex-wrap gap-1.5">
             {profile.interests.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/15 text-white backdrop-blur-sm"
+                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/15 text-white"
               >
                 {tag}
               </span>
