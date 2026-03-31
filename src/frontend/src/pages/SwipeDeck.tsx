@@ -25,7 +25,6 @@ import { MatchModal } from "../components/MatchModal";
 import { ModeToggle } from "../components/ModeToggle";
 import { NotificationTray } from "../components/NotificationTray";
 import { OnboardingTutorial } from "../components/OnboardingTutorial";
-import { ProfileViewer } from "../components/ProfileViewer";
 import { RewardedAdModal } from "../components/RewardedAdModal";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { useApp } from "../context/AppContext";
@@ -291,12 +290,14 @@ function SwipeCard({
   isTop,
   onView,
   superLikeStamp,
+  hasAIAccess,
 }: {
   profile: (typeof PROFILES)[0];
   onSwipe: (dir: "left" | "right" | "up") => void;
   isTop: boolean;
   onView: () => void;
   superLikeStamp?: boolean;
+  hasAIAccess: boolean;
 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -360,19 +361,20 @@ function SwipeCard({
         {/* ── Top card only: badges, stamps, info ── */}
         {isTop && (
           <>
-            {/* AI Match badge */}
-            <div
-              className="absolute top-4 right-4 rounded-full px-3 py-1.5 flex items-center gap-1.5"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(124,58,237,0.85), rgba(236,72,153,0.85))",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-            >
-              <span className="text-xs font-bold text-white">
-                ✨ AI Match {profile.compatibility}%
-              </span>
-            </div>
+            {hasAIAccess && (
+              <div
+                className="absolute top-4 right-4 rounded-full px-3 py-1.5 flex items-center gap-1.5"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(124,58,237,0.85), rgba(236,72,153,0.85))",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                }}
+              >
+                <span className="text-xs font-bold text-white">
+                  ✨ AI Match {profile.compatibility}%
+                </span>
+              </div>
+            )}
 
             {/* Pro / Best Match badge */}
             {profile.isPro && (
@@ -457,7 +459,7 @@ function SwipeCard({
                 >
                   {profile.name}, {profile.age}
                 </h2>
-                {profile.online && (
+                {profile.onlineStatus === "online" && (
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-xs text-green-400 font-medium">
@@ -527,6 +529,7 @@ export function SwipeDeck() {
     markAllRead,
     setShowUpgradeModal,
     setUpgradeReason,
+    hasAIAccess,
     tutorialDone,
   } = useApp();
 
@@ -535,7 +538,6 @@ export function SwipeDeck() {
     dir: "left" | "right" | "up";
   } | null>(null);
   const [showRewardedAd, setShowRewardedAd] = useState(false);
-  const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTutorial, setShowTutorial] = useState(!tutorialDone);
   const [showFilters, setShowFilters] = useState(false);
@@ -683,7 +685,7 @@ export function SwipeDeck() {
       )}
 
       {/* AI Matches banner */}
-      {!user?.isPro && (
+      {!hasAIAccess && (
         <motion.button
           type="button"
           initial={{ opacity: 0, y: -6 }}
@@ -767,8 +769,14 @@ export function SwipeDeck() {
                       profile={profile}
                       onSwipe={handleSwipe}
                       isTop={isTop}
-                      onView={() => setViewingProfile(profile)}
+                      onView={() =>
+                        navigate({
+                          to: "/profile/$id",
+                          params: { id: profile.id },
+                        })
+                      }
                       superLikeStamp={superLikeStampId === profile.id}
+                      hasAIAccess={hasAIAccess}
                     />
                   </motion.div>
                 );
@@ -936,18 +944,6 @@ export function SwipeDeck() {
           setShowUpgradeModal(true);
         }}
       />
-
-      <AnimatePresence>
-        {viewingProfile && (
-          <ProfileViewer
-            profile={viewingProfile}
-            isOpen={!!viewingProfile}
-            onClose={() => setViewingProfile(null)}
-            onSwipe={() => setViewingProfile(null)}
-            isMatched={false}
-          />
-        )}
-      </AnimatePresence>
 
       <NotificationTray
         isOpen={showNotifications}

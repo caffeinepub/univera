@@ -82,6 +82,8 @@ export function Profile() {
     avatarString,
     updateUserPhotos,
     setCoverPhotoIdx,
+    currentUserOnlineStatus,
+    setCurrentUserOnlineStatus,
   } = useApp();
   const { uploadFile } = useUploadPhoto();
   const [editing, setEditing] = useState(false);
@@ -1141,6 +1143,58 @@ export function Profile() {
           >
             <span className="text-base">🎉</span> How it works (replay tutorial)
           </button>
+        </div>
+
+        {/* ─ Online Status ─────────────────────────────────────────────────────────────────────────────────── */}
+        <div className="px-5 mb-4">
+          <div className="glass-card rounded-xl p-4">
+            <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <span>●</span> Online Status
+            </p>
+            <div className="flex gap-2">
+              {(["online", "away", "offline"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setCurrentUserOnlineStatus(status)}
+                  className="flex-1 py-2 px-2 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background:
+                      currentUserOnlineStatus === status
+                        ? status === "online"
+                          ? "rgba(34,197,94,0.2)"
+                          : status === "away"
+                            ? "rgba(245,158,11,0.2)"
+                            : "rgba(107,114,128,0.2)"
+                        : "rgba(255,255,255,0.04)",
+                    border:
+                      currentUserOnlineStatus === status
+                        ? status === "online"
+                          ? "1px solid rgba(34,197,94,0.5)"
+                          : status === "away"
+                            ? "1px solid rgba(245,158,11,0.5)"
+                            : "1px solid rgba(107,114,128,0.5)"
+                        : "1px solid rgba(255,255,255,0.08)",
+                    color:
+                      currentUserOnlineStatus === status
+                        ? status === "online"
+                          ? "#4ade80"
+                          : status === "away"
+                            ? "#f59e0b"
+                            : "#9ca3af"
+                        : "rgba(255,255,255,0.5)",
+                  }}
+                  data-ocid={`profile.online_${status}.toggle`}
+                >
+                  {status === "online"
+                    ? "🟢 Online"
+                    : status === "away"
+                      ? "🟡 Away"
+                      : "⬤ Offline"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ─ Account actions ─────────────────────────────────────────────────────────────────────────────────── */}

@@ -12,11 +12,8 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
+import { useActor } from "../hooks/useActor";
 import { useUploadPhoto } from "../hooks/useUploadPhoto";
-
-function generateOTP(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
 
 const PROMPTS = [
   "My perfect weekend is\u2026",
@@ -149,10 +146,11 @@ function OTPStep({
   cooldown,
   error,
   prefix,
+  verifying,
 }: {
   title: string;
   subtitle: string;
-  simOTP: string;
+  simOTP?: string;
   otpValue: string;
   setOtpValue: (v: string) => void;
   onVerify: () => void;
@@ -160,6 +158,7 @@ function OTPStep({
   cooldown: number;
   error: string;
   prefix: string;
+  verifying?: boolean;
 }) {
   return (
     <div>
@@ -188,26 +187,33 @@ function OTPStep({
           {error}
         </div>
       )}
-      <div
-        className="mb-5 px-4 py-3 rounded-xl text-sm"
-        style={{
-          background: "rgba(139,92,246,0.08)",
-          border: "1px solid rgba(139,92,246,0.2)",
-        }}
-      >
-        \ud83d\udce9 Your OTP (for testing):{" "}
-        <strong style={{ color: "#7c3aed", letterSpacing: "0.12em" }}>
-          {simOTP}
-        </strong>
-      </div>
+      {simOTP && (
+        <div
+          className="mb-5 px-4 py-3 rounded-xl text-sm"
+          style={{
+            background: "rgba(139,92,246,0.08)",
+            border: "1px solid rgba(139,92,246,0.2)",
+          }}
+        >
+          \ud83d\udce9 Your OTP (for testing):{" "}
+          <strong style={{ color: "#7c3aed", letterSpacing: "0.12em" }}>
+            {simOTP}
+          </strong>
+        </div>
+      )}
       <OTPInput value={otpValue} onChange={setOtpValue} prefix={prefix} />
       <button
         type="button"
         onClick={onVerify}
+        disabled={verifying}
         data-ocid="signup.primary_button"
-        className="w-full mt-4 py-3 rounded-xl font-semibold text-white text-sm"
-        style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}
+        className="w-full mt-4 py-3 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2"
+        style={{
+          background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+          opacity: verifying ? 0.7 : 1,
+        }}
       >
+        {verifying && <Loader2 size={14} className="animate-spin" />}
         Verify OTP
       </button>
       <button
@@ -251,38 +257,40 @@ const inputStyle = {
 
 export function Signup() {
   const { setUser, updateUserPhotos } = useApp();
+  const { actor } = useActor();
   const { uploadFile } = useUploadPhoto();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<MainStep>(1);
   const [profileSub, setProfileSub] = useState<ProfileSubStep>("a");
 
-  // Step 1 \u2014 Email OTP
+  // Step 1 — Email OTP
   const [email, setEmail] = useState("");
-  const [emailOTP, setEmailOTP] = useState("");
   const [emailOTPInput, setEmailOTPInput] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [emailCooldown, setEmailCooldown] = useState(0);
   const [emailError, setEmailError] = useState("");
+  const [sendingOTP, setSendingOTP] = useState(false);
+  const [verifyingOTP, setVerifyingOTP] = useState(false);
   const emailCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Step 2 \u2014 Phone OTP
+  // Step 2 — Phone OTP
   const [phone, setPhone] = useState("");
-  const [phoneOTP, setPhoneOTP] = useState("");
   const [phoneOTPInput, setPhoneOTPInput] = useState("");
   const [phoneSent, setPhoneSent] = useState(false);
   const [phoneCooldown, setPhoneCooldown] = useState(0);
   const [phoneError, setPhoneError] = useState("");
+  const [phoneOTP, setPhoneOTP] = useState("");
   const phoneCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Step 3 \u2014 Password
+  // Step 3 — Password
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passError, setPassError] = useState("");
 
-  // Step 4 \u2014 Profile
+  // Step 4 — Profile
   const [name, setName] = useState("");
   const [gender, setGender] = useState<
     "male" | "female" | "prefer_not_to_say" | ""
@@ -324,7 +332,7 @@ export function Signup() {
     };
   }, []);
 
-  const handleSendEmailOTP = () => {
+  const handleSendEmailOTP = async () => {
     setEmailError("");
     if (!email.toLowerCase().endsWith("@dgu.ac.in")) {
       setEmailError("Only DBS Global University students can sign up");
@@ -337,26 +345,63 @@ export function Signup() {
       setEmailError("An account with this email already exists.");
       return;
     }
-    const otp = generateOTP();
-    setEmailOTP(otp);
-    setEmailSent(true);
-    startCooldown(setEmailCooldown, emailCooldownRef);
-  };
-
-  const handleResendEmailOTP = () => {
-    if (emailCooldown > 0) return;
-    setEmailOTP(generateOTP());
-    startCooldown(setEmailCooldown, emailCooldownRef);
-  };
-
-  const handleVerifyEmailOTP = () => {
-    setEmailError("");
-    if (emailOTPInput.trim() !== emailOTP) {
-      setEmailError("Incorrect OTP. Please try again.");
-      return;
+    setSendingOTP(true);
+    try {
+      if (!actor) {
+        setEmailError("Service unavailable. Please try again.");
+        setSendingOTP(false);
+        return;
+      }
+      const result = await (actor as any).requestEmailOTP(email);
+      if (result.__kind__ === "ok") {
+        setEmailSent(true);
+        startCooldown(setEmailCooldown, emailCooldownRef);
+      } else {
+        setEmailError(result.error || "Failed to send OTP. Please try again.");
+      }
+    } catch {
+      setEmailError("Failed to send OTP. Please try again.");
+    } finally {
+      setSendingOTP(false);
     }
-    setStep(2);
   };
+
+  const handleResendEmailOTP = async () => {
+    if (emailCooldown > 0) return;
+    startCooldown(setEmailCooldown, emailCooldownRef);
+    try {
+      if (actor) await (actor as any).requestEmailOTP(email);
+    } catch {
+      // fire-and-forget, ignore errors silently
+    }
+  };
+
+  const handleVerifyEmailOTP = async () => {
+    setEmailError("");
+    setVerifyingOTP(true);
+    try {
+      const result = await (actor as any).verifyEmailOTP(
+        email,
+        emailOTPInput.trim(),
+      );
+      if (result.__kind__ === "ok") {
+        setStep(2);
+      } else if (result.__kind__ === "invalid") {
+        setEmailError("Incorrect OTP. Please try again.");
+      } else if (result.__kind__ === "expired") {
+        setEmailError("OTP has expired. Please request a new one.");
+      } else if (result.__kind__ === "tooManyAttempts") {
+        setEmailError("Too many attempts. Please request a new OTP.");
+      }
+    } catch {
+      setEmailError("Failed to verify OTP. Please try again.");
+    } finally {
+      setVerifyingOTP(false);
+    }
+  };
+
+  const generateLocalOTP = (): string =>
+    String(Math.floor(100000 + Math.random() * 900000));
 
   const handleSendPhoneOTP = () => {
     setPhoneError("");
@@ -364,7 +409,7 @@ export function Signup() {
       setPhoneError("Please enter a valid 10-digit phone number.");
       return;
     }
-    const otp = generateOTP();
+    const otp = generateLocalOTP();
     setPhoneOTP(otp);
     setPhoneSent(true);
     startCooldown(setPhoneCooldown, phoneCooldownRef);
@@ -372,7 +417,7 @@ export function Signup() {
 
   const handleResendPhoneOTP = () => {
     if (phoneCooldown > 0) return;
-    setPhoneOTP(generateOTP());
+    setPhoneOTP(generateLocalOTP());
     startCooldown(setPhoneCooldown, phoneCooldownRef);
   };
 
@@ -581,7 +626,9 @@ export function Signup() {
                 placeholder="student@dgu.ac.in"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendEmailOTP()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !sendingOTP && handleSendEmailOTP()
+                }
                 data-ocid="signup.input"
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none mb-4"
                 style={inputStyle}
@@ -589,12 +636,15 @@ export function Signup() {
               <button
                 type="button"
                 onClick={handleSendEmailOTP}
+                disabled={sendingOTP}
                 data-ocid="signup.primary_button"
-                className="w-full py-3 rounded-xl font-semibold text-white text-sm"
+                className="w-full py-3 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2"
                 style={{
                   background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                  opacity: sendingOTP ? 0.7 : 1,
                 }}
               >
+                {sendingOTP && <Loader2 size={14} className="animate-spin" />}
                 Send OTP
               </button>
             </>
@@ -602,7 +652,6 @@ export function Signup() {
             <OTPStep
               title="Verify your university email"
               subtitle={`OTP sent to ${email}`}
-              simOTP={emailOTP}
               otpValue={emailOTPInput}
               setOtpValue={setEmailOTPInput}
               onVerify={handleVerifyEmailOTP}
@@ -610,6 +659,7 @@ export function Signup() {
               cooldown={emailCooldown}
               error={emailError}
               prefix="email-otp"
+              verifying={verifyingOTP}
             />
           )}
         </motion.div>
@@ -875,7 +925,11 @@ export function Signup() {
                           ? "linear-gradient(135deg, #7C3AED, #EC4899)"
                           : "rgba(139,92,246,0.08)",
                       color: gender === g.value ? "white" : "#7c3aed",
-                      border: `1px solid ${gender === g.value ? "transparent" : "rgba(139,92,246,0.25)"}`,
+                      border: `1px solid ${
+                        gender === g.value
+                          ? "transparent"
+                          : "rgba(139,92,246,0.25)"
+                      }`,
                     }}
                   >
                     {g.label}
@@ -1154,7 +1208,9 @@ export function Signup() {
               Uploading {uploadProgress.current}/{uploadProgress.total} photos…
             </>
           ) : readyCount < 3 ? (
-            `Select ${3 - readyCount} more photo${3 - readyCount !== 1 ? "s" : ""}`
+            `Select ${3 - readyCount} more photo${
+              3 - readyCount !== 1 ? "s" : ""
+            }`
           ) : (
             "Complete Signup 🎉"
           )}

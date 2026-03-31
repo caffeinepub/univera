@@ -6,10 +6,8 @@ import { AdBanner } from "../components/AdBanner";
 import { BottomNav } from "../components/BottomNav";
 import { ImgWithFallback } from "../components/ImgWithFallback";
 import { MatchModal } from "../components/MatchModal";
-import { ProfileViewer } from "../components/ProfileViewer";
 import { useApp } from "../context/AppContext";
 import { PROFILES } from "../data/mockData";
-import type { Profile } from "../data/mockData";
 
 export function Matches() {
   const navigate = useNavigate();
@@ -23,9 +21,6 @@ export function Matches() {
     planType,
   } = useApp();
   const [tab, setTab] = useState<"matches" | "likes">("matches");
-  const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
-  const [viewingMatchId, setViewingMatchId] = useState<string | null>(null);
-  const [viewingIsMatched, setViewingIsMatched] = useState(false);
 
   // Filter out blocked users
   const matchProfiles = matches
@@ -38,23 +33,6 @@ export function Matches() {
       (x): x is { match: (typeof matches)[0]; profile: (typeof PROFILES)[0] } =>
         !!x.profile,
     );
-
-  const openMatchProfile = (matchId: string, profile: Profile) => {
-    setViewingMatchId(matchId);
-    setViewingProfile(profile);
-    setViewingIsMatched(true);
-  };
-
-  const openLikerProfile = (profile: Profile) => {
-    setViewingMatchId(null);
-    setViewingProfile(profile);
-    setViewingIsMatched(false);
-  };
-
-  const closeViewer = () => {
-    setViewingProfile(null);
-    setViewingMatchId(null);
-  };
 
   return (
     <div className="app-shell bg-app flex flex-col h-[100dvh]">
@@ -163,7 +141,9 @@ export function Matches() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08 }}
                 className="glass-card rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => openMatchProfile(match.id, profile)}
+                onClick={() =>
+                  navigate({ to: "/profile/$id", params: { id: profile.id } })
+                }
                 data-ocid={`matches.item.${i + 1}`}
               >
                 <div className="relative flex-shrink-0">
@@ -176,7 +156,7 @@ export function Matches() {
                     className="w-14 h-14 rounded-full object-cover neon-border-violet"
                     fallbackAvatar="🧑"
                   />
-                  {profile.online && (
+                  {profile.onlineStatus === "online" && (
                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-background" />
                   )}
                   {profile.isVerified && (
@@ -245,7 +225,12 @@ export function Matches() {
                   <button
                     type="button"
                     className="relative flex-shrink-0 cursor-pointer"
-                    onClick={() => openLikerProfile(likerProfile)}
+                    onClick={() =>
+                      navigate({
+                        to: "/profile/$id",
+                        params: { id: likerProfile.id },
+                      })
+                    }
                   >
                     <img
                       src={likerProfile.photo}
@@ -268,7 +253,12 @@ export function Matches() {
                     <button
                       type="button"
                       className="flex items-center gap-1.5 mb-0.5 hover:opacity-80 transition-opacity"
-                      onClick={() => openLikerProfile(likerProfile)}
+                      onClick={() =>
+                        navigate({
+                          to: "/profile/$id",
+                          params: { id: likerProfile.id },
+                        })
+                      }
                     >
                       <span className="font-bold text-foreground text-sm">
                         {likerProfile.name}, {likerProfile.age}
@@ -333,23 +323,6 @@ export function Matches() {
 
       <BottomNav />
       <MatchModal />
-
-      {/* Profile Viewer */}
-      <ProfileViewer
-        profile={viewingProfile}
-        isOpen={!!viewingProfile}
-        onClose={closeViewer}
-        onSwipe={closeViewer}
-        isMatched={viewingIsMatched}
-        onMessage={
-          viewingMatchId
-            ? () => {
-                closeViewer();
-                navigate({ to: `/chat/${viewingMatchId}` });
-              }
-            : undefined
-        }
-      />
     </div>
   );
 }

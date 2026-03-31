@@ -4,13 +4,13 @@ import Principal "mo:core/Principal";
 import Text "mo:core/Text";
 import Map "mo:core/Map";
 import Time "mo:core/Time";
-import List "mo:core/List";
 import Iter "mo:core/Iter";
-import Set "mo:core/Set";
 import Int "mo:core/Int";
+import Nat "mo:core/Nat";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
+import Outcall "http-outcalls/outcall";
 
 
 
@@ -18,6 +18,90 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
   include MixinStorage();
+
+  // ─── OTP Store ────────────────────────────────────────────────────────────
+  let RESEND_API_KEY = "re_6zU6XHZJ_38h2oTUQ5AunbtRTttrk71dx";
+  let OTP_EXPIRY_NS : Int = 10 * 60 * 1_000_000_000; // 10 minutes
+  let MAX_OTP_ATTEMPTS : Nat = 5;
+
+  type OTPRecord = {
+    otp : Text;
+    expiresAt : Time.Time;
+    attempts : Nat;
+    used : Bool;
+  };
+
+  let otpStore = Map.empty<Text, OTPRecord>();
+
+  // Transform function required by http-outcalls
+  public query func transform(input : Outcall.TransformationInput) : async Outcall.TransformationOutput {
+    Outcall.transform(input);
+  };
+
+  // Generate a 6-digit OTP
+  func generateOTP() : Text {
+    let t = Time.now();
+    let seed = Int.abs(t) % 900000 + 100000;
+    seed.toText();
+  };
+
+  // Send OTP email via Resend API
+  public shared func requestEmailOTP(email : Text) : async { #ok; #error : Text } {
+    // Validate @dgu.ac.in domain
+    if (not email.endsWith(#text "@dgu.ac.in")) {
+      return #error("Only DBS Global University students can sign up");
+    };
+
+    let otp = generateOTP();
+    let expiresAt = Time.now() + OTP_EXPIRY_NS;
+
+    // Store OTP
+    otpStore.add(email, {
+      otp = otp;
+      expiresAt = expiresAt;
+      attempts = 0;
+      used = false;
+    });
+
+    // Build JSON body for Resend
+    let body = "{\"from\":\"UNIVERA <onboarding@resend.dev>\",\"to\":[\"" # email # "\"],\"subject\":\"Your UNIVERA verification code\",\"html\":\"<p>Your verification code is: <strong style=\\\"font-size:24px;letter-spacing:4px;\\\">" # otp # "</strong></p><p>This code expires in 10 minutes. Do not share it.</p><p>The UNIVERA Team</p>\"}"
+    ;
+
+    try {
+      let _ = await Outcall.httpPostRequest(
+        "https://api.resend.com/emails",
+        [
+          { name = "Authorization"; value = "Bearer " # RESEND_API_KEY },
+          { name = "Content-Type"; value = "application/json" },
+        ],
+        body,
+        transform,
+      );
+      #ok;
+    } catch (_e) {
+      #error("Failed to send email. Please try again.");
+    };
+  };
+
+  // Verify OTP
+  public shared func verifyEmailOTP(email : Text, inputOTP : Text) : async { #ok; #invalid; #expired; #tooManyAttempts } {
+    switch (otpStore.get(email)) {
+      case (null) { #invalid };
+      case (?record) {
+        if (record.used) { return #invalid };
+        if (record.attempts >= MAX_OTP_ATTEMPTS) { return #tooManyAttempts };
+        if (Time.now() > record.expiresAt) { return #expired };
+        if (record.otp != inputOTP) {
+          // Increment attempts
+          otpStore.add(email, { record with attempts = record.attempts + 1 });
+          return #invalid;
+        };
+        // Mark as used
+        otpStore.add(email, { record with used = true });
+        #ok;
+      };
+    };
+  };
 
   type UserPhoto = {
     url : Text;
@@ -302,12 +386,12 @@ actor {
     switch (feedPosts.get(postId)) {
       case (?post) {
         let currentLikes = switch (postLikes.get(postId)) {
-          case (?likes) { let (list, id) = likes; list };
+          case (?likes) { let (list, _id) = likes; list };
           case (null) { [] };
         };
         let alreadyLiked = currentLikes.find<Principal>(func(p) { p == caller }) != null;
         if (alreadyLiked) {
-          let updatedLikes = currentLikes.filter(func(id) { id != caller });
+          let updatedLikes = currentLikes.filter(func(_id) { _id != caller });
           postLikes.add(postId, (updatedLikes, post.id));
           let prevCount1 : Int = post.likesCount;
           let newLikesCount = if (prevCount1 > 0) { Int.abs(prevCount1 - 1) } else { 0 };
@@ -340,9 +424,9 @@ actor {
       case (?post) {
         let currentLikes = switch (postLikes.get(postId)) {
           case (null) { return null };
-          case (?likes) { let (list, id) = likes; list };
+          case (?likes) { let (list, _id) = likes; list };
         };
-        let updatedLikes = currentLikes.filter(func(id) { id != caller });
+        let updatedLikes = currentLikes.filter(func(_id) { _id != caller });
         postLikes.add(postId, (updatedLikes, post.id));
         let prevCount2 : Int = post.likesCount;
         let newLikesCount = if (prevCount2 > 0) { Int.abs(prevCount2 - 1) } else { 0 };
@@ -447,13 +531,13 @@ actor {
     };
   };
 
-  public query ({ caller }) func getComments(postId : Text) : async [Comment] {
+  public query ({ caller }) func getComments(_postId : Text) : async [Comment] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view comments");
     };
     var filteredComments : [CommentInternal] = [];
     for ((key, commentInternal) in commentMap.entries()) {
-      if (commentInternal.comment.postId == postId) {
+      if (commentInternal.comment.postId == _postId) {
         let commentInternalArray : [CommentInternal] = [commentInternal];
         filteredComments := filteredComments.concat(commentInternalArray);
       };
@@ -561,7 +645,7 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can delete matches");
     };
-    let existingMatch = switch (matches.get(matchId)) {
+    let _existingMatch = switch (matches.get(matchId)) {
       case (null) { Runtime.trap("Match not found") };
       case (?m) {
         if (m.user1 != caller and m.user2 != caller) {
@@ -708,7 +792,7 @@ actor {
         if (blocked) {
           Runtime.trap("Cannot send message: users have blocked each other");
         };
-        let receiverId = if (caller == thisMatch.user1) { thisMatch.user2 } else {
+        let _receiverId = if (caller == thisMatch.user1) { thisMatch.user2 } else {
           thisMatch.user1;
         };
         if (not thisMatch.firstMessageSent) {
@@ -828,14 +912,6 @@ actor {
         reports.add(reportId, updatedReport);
       };
     };
-  };
-
-  func getCurrentUserReports(caller : Principal) : [Report] {
-    reports.values().toArray().filter(func(r) { r.reporterUserId == caller });
-  };
-
-  func getCurrentUserBlocks(caller : Principal) : [Block] {
-    blocks.values().toArray().filter(func(b) { b.blockerUserId == caller });
   };
 
   // ─── Chat Polling: get messages after a given timestamp ───────────────────

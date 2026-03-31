@@ -157,4 +157,6 @@ export interface backendInterface {
     getMessagesAfter(matchId: string, afterTimestamp: bigint): Promise<Array<ChatMessage>>;
     saveChatTheme(matchId: string, theme: string): Promise<void>;
     getChatThemes(): Promise<Array<[string, string]>>;
+    requestEmailOTP(email: string): Promise<{ __kind__: "ok" } | { __kind__: "error"; error: string }>;
+    verifyEmailOTP(email: string, otp: string): Promise<{ __kind__: "ok" } | { __kind__: "invalid" } | { __kind__: "expired" } | { __kind__: "tooManyAttempts" }>;
 }

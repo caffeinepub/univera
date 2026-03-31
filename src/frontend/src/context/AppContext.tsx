@@ -173,6 +173,7 @@ interface AppContextType {
   boostsUsedThisWeek: number;
   boostsRemaining: number;
   subscriptionExpiry: number | null;
+  hasAIAccess: boolean;
   nextSwipeResetIn: number;
   nextSuperLikeResetIn: number;
   // Legacy compat
@@ -228,6 +229,8 @@ interface AppContextType {
   activateBoost: () => void;
   tutorialDone: boolean;
   setTutorialDone: (v: boolean) => void;
+  currentUserOnlineStatus: "online" | "away" | "offline";
+  setCurrentUserOnlineStatus: (status: "online" | "away" | "offline") => void;
   // Safety features
   blockedUsers: string[];
   blockUser: (userId: string) => void;
@@ -595,6 +598,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setTutorialDone = (v: boolean) => {
     setTutorialDoneState(v);
     lsSet("univera_tutorial_done", String(v));
+  };
+
+  const [currentUserOnlineStatus, setCurrentUserOnlineStatusState] = useState<
+    "online" | "away" | "offline"
+  >(() => {
+    return (
+      (lsGet("univera_online_status") as "online" | "away" | "offline") ??
+      "online"
+    );
+  });
+  const setCurrentUserOnlineStatus = (
+    status: "online" | "away" | "offline",
+  ) => {
+    setCurrentUserOnlineStatusState(status);
+    lsSet("univera_online_status", status);
   };
 
   const getCallerPrincipal = useCallback((): Principal => {
@@ -1166,6 +1184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleTheme,
         // Plan
         planType,
+        hasAIAccess: planType === "monthly" || planType === "yearly",
         setPlanType,
         dailySwipesUsed,
         swipesLimit,
@@ -1216,6 +1235,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activateBoost,
         tutorialDone,
         setTutorialDone,
+        currentUserOnlineStatus,
+        setCurrentUserOnlineStatus,
         // Safety
         blockedUsers,
         blockUser,

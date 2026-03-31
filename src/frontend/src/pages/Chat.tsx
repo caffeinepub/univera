@@ -145,6 +145,7 @@ export function Chat() {
   const {
     matches,
     planType,
+    hasAIAccess,
     user,
     blockUser,
     removeMatch,
@@ -154,6 +155,7 @@ export function Chat() {
     setChatTheme,
     avatarString,
     loadChatMessages,
+    setShowUpgradeModal,
     sendChatMessage,
   } = useApp();
 
@@ -453,7 +455,11 @@ export function Chat() {
             )}
           </div>
           <div className="text-xs text-green-400">
-            {profile.online ? "Online Now" : "Active recently"}
+            {profile.onlineStatus === "online"
+              ? "Online Now"
+              : profile.onlineStatus === "away"
+                ? "Away"
+                : "Active recently"}
           </div>
         </div>
         <div className="text-xs text-primary font-bold">
@@ -690,63 +696,85 @@ export function Chat() {
 
       {/* Input area */}
       <div className="px-4 py-3 glass-dark flex flex-col gap-2 flex-shrink-0">
-        {/* AI Quick Actions */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {AI_QUICK_ACTIONS.map((action) => (
-              <button
-                key={action.pool}
-                type="button"
-                onClick={() => handleQuickAction(action.pool)}
-                disabled={aiLoading || inputDisabled}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
+        {hasAIAccess ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+              {AI_QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.pool}
+                  type="button"
+                  onClick={() => handleQuickAction(action.pool)}
+                  disabled={aiLoading || inputDisabled}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(236,72,153,0.2))",
+                    border: "1px solid rgba(139,92,246,0.35)",
+                    color: "#c4b5fd",
+                  }}
+                  data-ocid="chat.toggle"
+                >
+                  {aiLoading ? (
+                    <Sparkles size={10} className="animate-pulse" />
+                  ) : (
+                    <Sparkles size={10} />
+                  )}
+                  {action.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAiInputSubmit()}
+                placeholder="Ask AI what to say…"
+                disabled={inputDisabled}
+                className="flex-1 px-3 py-1.5 rounded-full text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(236,72,153,0.2))",
-                  border: "1px solid rgba(139,92,246,0.35)",
+                  background: "rgba(139,92,246,0.1)",
+                  border: "1px solid rgba(139,92,246,0.2)",
                   color: "#c4b5fd",
                 }}
-                data-ocid="chat.toggle"
+                data-ocid="chat.search_input"
+              />
+              <button
+                type="button"
+                onClick={handleAiInputSubmit}
+                disabled={!aiInput.trim() || inputDisabled}
+                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(236,72,153,0.5))",
+                }}
+                data-ocid="chat.secondary_button"
               >
-                {aiLoading ? (
-                  <Sparkles size={10} className="animate-pulse" />
-                ) : (
-                  <Sparkles size={10} />
-                )}
-                {action.label}
+                <span className="text-xs">✨</span>
               </button>
-            ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={aiInput}
-              onChange={(e) => setAiInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAiInputSubmit()}
-              placeholder="Ask AI what to say…"
-              disabled={inputDisabled}
-              className="flex-1 px-3 py-1.5 rounded-full text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
-              style={{
-                background: "rgba(139,92,246,0.1)",
-                border: "1px solid rgba(139,92,246,0.2)",
-                color: "#c4b5fd",
-              }}
-              data-ocid="chat.search_input"
-            />
+        ) : (
+          <div className="flex items-center gap-2 px-1 py-1">
+            <span className="text-xs text-white/40">
+              🤖 Upgrade to Pro to unlock AI features
+            </span>
             <button
               type="button"
-              onClick={handleAiInputSubmit}
-              disabled={!aiInput.trim() || inputDisabled}
-              className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(236,72,153,0.5))",
+              onClick={() => {
+                setShowUpgradeModal(true);
               }}
-              data-ocid="chat.secondary_button"
+              className="flex-shrink-0 text-xs font-semibold px-3 py-1 rounded-full"
+              style={{
+                background: "rgba(124,58,237,0.25)",
+                color: "#c4b5fd",
+                border: "1px solid rgba(139,92,246,0.3)",
+              }}
+              data-ocid="chat.primary_button"
             >
-              <span className="text-xs">✨</span>
+              Upgrade
             </button>
           </div>
-        </div>
+        )}
 
         {/* Message input */}
         <div className="flex items-center gap-2">

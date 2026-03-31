@@ -343,7 +343,7 @@ export function Home() {
   const sameMajorProfiles = user?.major
     ? PROFILES.filter((p) => p.major.toLowerCase() === user.major.toLowerCase())
     : PROFILES.slice(0, 4);
-  const activeProfiles = PROFILES.filter((p) => p.online);
+  const activeProfiles = PROFILES.filter((p) => p.onlineStatus === "online");
   const bffProfiles = PROFILES.filter((p) => p.mode === "bff");
 
   const sameMajorBadgeMap: Record<string, string> = {};

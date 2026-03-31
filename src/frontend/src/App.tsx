@@ -17,6 +17,7 @@ import { Landing } from "./pages/Landing";
 import { Matches } from "./pages/Matches";
 import { Onboarding } from "./pages/Onboarding";
 import { Profile } from "./pages/Profile";
+import { ProfilePage } from "./pages/ProfilePage";
 import { Signup } from "./pages/Signup";
 import { Subscription } from "./pages/Subscription";
 import { SwipeDeck } from "./pages/SwipeDeck";
@@ -94,6 +95,12 @@ const signupRoute = createRoute({
   component: Signup,
 });
 
+const profileViewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile/$id",
+  component: ProfilePage,
+});
+
 const helpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/help",
@@ -113,6 +120,7 @@ const routeTree = rootRoute.addChildren([
   subscriptionRoute,
   signupRoute,
   helpRoute,
+  profileViewRoute,
 ]);
 
 const router = createRouter({ routeTree });

@@ -21,7 +21,7 @@ export interface Profile {
   coverPhotoIndex?: number;
   promptCards?: PromptCard[];
   distance: string;
-  online: boolean;
+  onlineStatus: "online" | "away" | "offline";
   compatibility: number;
   isPro?: boolean;
   personality?: string;
@@ -63,24 +63,33 @@ export const PROFILES: Profile[] = [
     year: "3rd Year",
     mode: "dating",
     bio: "chai lover & hackathon addict ☕ building things that matter",
-    interests: ["Coding", "Music", "Hiking", "Coffee"],
-    photo: "https://picsum.photos/seed/maya/400/500",
+    interests: ["Coding", "Music", "Hiking", "Coffee", "Photography"],
+    photo: "/assets/generated/maya-portrait.dim_400x500.jpg",
     isVerified: true,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/maya/400/500",
+        url: "/assets/generated/maya-portrait.dim_400x500.jpg",
         caption: "chai and code — my two loves ☕",
       },
       {
-        url: "https://picsum.photos/seed/maya/400/500",
-        caption: "hackathon winner 3 times in a row 🏆",
+        url: "/assets/generated/maya-casual.dim_400x500.jpg",
+        caption: "golden hour chai run with friends 😄",
       },
       {
-        url: "https://picsum.photos/seed/maya/400/500",
+        url: "/assets/generated/maya-library.dim_400x500.jpg",
+        caption: "hackathon prep mode: on 💻",
+      },
+      {
+        url: "/assets/generated/maya-cafe.dim_400x500.jpg",
+        caption: "this cafe is basically my second home ☕",
+      },
+      {
+        url: "/assets/generated/maya-hiking.dim_400x500.jpg",
         caption: "weekend hikes keep me sane 🌿",
       },
       {
-        url: "https://picsum.photos/seed/maya/400/500",
+        url: "/assets/generated/maya-lifestyle.dim_400x500.jpg",
         caption: "spotify wrapped said I'm a sad girl lol 🎧",
       },
     ],
@@ -98,7 +107,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "2.1 km",
-    online: true,
+    onlineStatus: "online",
     compatibility: 94,
     isDemo: true,
   },
@@ -110,25 +119,34 @@ export const PROFILES: Profile[] = [
     year: "4th Year",
     mode: "dating",
     bio: "basketball court to boardroom 🏀 aspiring founder",
-    interests: ["Sports", "Finance", "Travel", "Startups"],
-    photo: "https://picsum.photos/seed/aryan/400/500",
+    interests: ["Sports", "Finance", "Travel", "Startups", "Fitness"],
+    photo: "/assets/generated/aryan-portrait.dim_400x500.jpg",
     isVerified: true,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/aryan/400/500",
+        url: "/assets/generated/aryan-portrait.dim_400x500.jpg",
         caption: "game day energy hits different 🏀",
       },
       {
-        url: "https://picsum.photos/seed/aryan/400/500",
+        url: "/assets/generated/aryan-basketball.dim_400x500.jpg",
+        caption: "court is my second classroom 🏀",
+      },
+      {
+        url: "/assets/generated/aryan-library.dim_400x500.jpg",
         caption: "my pitch deck won regionals 🚀",
       },
       {
-        url: "https://picsum.photos/seed/aryan/400/500",
+        url: "/assets/generated/aryan-cafe.dim_400x500.jpg",
+        caption: "coffee shop mornings before 8am lectures ☕",
+      },
+      {
+        url: "/assets/generated/aryan-travel.dim_400x500.jpg",
         caption: "solo trip to Manali was everything 🏔️",
       },
       {
-        url: "https://picsum.photos/seed/aryan/400/500",
-        caption: "coffee shop mornings before 8am lectures ☕",
+        url: "/assets/generated/aryan-lifestyle.dim_400x500.jpg",
+        caption: "startups > lectures, always 💼",
       },
     ],
     promptCards: [
@@ -144,7 +162,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "0.8 km",
-    online: true,
+    onlineStatus: "online",
     compatibility: 87,
     isDemo: true,
   },
@@ -156,25 +174,34 @@ export const PROFILES: Profile[] = [
     year: "2nd Year",
     mode: "bff",
     bio: "figma and film 🎬 obsessed with visual stories",
-    interests: ["Art", "Movies", "Yoga", "Photography"],
-    photo: "https://picsum.photos/seed/priya/400/500",
+    interests: ["Art", "Movies", "Yoga", "Photography", "Dance"],
+    photo: "/assets/generated/priya-portrait.dim_400x500.jpg",
     isVerified: false,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/priya/400/500",
+        url: "/assets/generated/priya-portrait.dim_400x500.jpg",
         caption: "golden hour in the design studio 🎨",
       },
       {
-        url: "https://picsum.photos/seed/priya/400/500",
+        url: "/assets/generated/priya-casual.dim_400x500.jpg",
+        caption: "design workshops are my happy place ✨",
+      },
+      {
+        url: "/assets/generated/priya-studio.dim_400x500.jpg",
+        caption: "figma open, dreams loading... 💻",
+      },
+      {
+        url: "/assets/generated/priya-cafe.dim_400x500.jpg",
+        caption: "sketchbook + cappuccino = perfect afternoon 🍵",
+      },
+      {
+        url: "/assets/generated/priya-photography.dim_400x500.jpg",
         caption: "my film photography doesn't lie 📷",
       },
       {
-        url: "https://picsum.photos/seed/priya/400/500",
+        url: "/assets/generated/priya-yoga.dim_400x500.jpg",
         caption: "Sunday yoga then Sunday cinema 🧘",
-      },
-      {
-        url: "https://picsum.photos/seed/priya/400/500",
-        caption: "this mural took 3 weeks and I'd do it again 🖌️",
       },
     ],
     promptCards: [
@@ -185,7 +212,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "1.4 km",
-    online: false,
+    onlineStatus: "offline",
     compatibility: 91,
     isDemo: true,
   },
@@ -197,25 +224,34 @@ export const PROFILES: Profile[] = [
     year: "4th Year",
     mode: "dating",
     bio: "late nights debugging, early mornings running 🤖",
-    interests: ["Robotics", "Gaming", "Coffee", "Cycling"],
-    photo: "https://picsum.photos/seed/rohan/400/500",
+    interests: ["Robotics", "Gaming", "Coffee", "Cycling", "Books"],
+    photo: "/assets/generated/rohan-portrait.dim_400x500.jpg",
     isVerified: true,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/rohan/400/500",
-        caption: "my robot arm finally works 🤖",
+        url: "/assets/generated/rohan-portrait.dim_400x500.jpg",
+        caption: "engineering is a lifestyle, not a major 🤖",
       },
       {
-        url: "https://picsum.photos/seed/rohan/400/500",
+        url: "/assets/generated/rohan-cycling.dim_400x500.jpg",
         caption: "5am cycling before exams hits 🚴",
       },
       {
-        url: "https://picsum.photos/seed/rohan/400/500",
+        url: "/assets/generated/rohan-lab.dim_400x500.jpg",
+        caption: "my robot arm finally works 🦾",
+      },
+      {
+        url: "/assets/generated/rohan-cafe.dim_400x500.jpg",
+        caption: "late night lab sessions with the squad ☕",
+      },
+      {
+        url: "/assets/generated/rohan-gaming.dim_400x500.jpg",
         caption: "gaming is a legitimate life skill 🎮",
       },
       {
-        url: "https://picsum.photos/seed/rohan/400/500",
-        caption: "late night lab sessions with the squad 🔬",
+        url: "/assets/generated/rohan-lifestyle.dim_400x500.jpg",
+        caption: "rooftop sunsets = mandatory decompression 🌆",
       },
     ],
     promptCards: [
@@ -232,7 +268,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "3.2 km",
-    online: true,
+    onlineStatus: "online",
     compatibility: 78,
     isDemo: true,
   },
@@ -243,25 +279,34 @@ export const PROFILES: Profile[] = [
     major: "Law",
     year: "3rd Year",
     mode: "bff",
-    bio: "debate club president 🏗️ passionate about justice",
-    interests: ["Politics", "Reading", "Dance", "Travel"],
-    photo: "https://picsum.photos/seed/aisha/400/500",
+    bio: "debate club president 🏛️ passionate about justice",
+    interests: ["Politics", "Reading", "Dance", "Travel", "Cooking"],
+    photo: "/assets/generated/aisha-portrait.dim_400x500.jpg",
     isVerified: true,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/aisha/400/500",
-        caption: "won nationals in debate last month 🏗️",
+        url: "/assets/generated/aisha-portrait.dim_400x500.jpg",
+        caption: "won nationals in debate last month 🏛️",
       },
       {
-        url: "https://picsum.photos/seed/aisha/400/500",
+        url: "/assets/generated/aisha-dance.dim_400x500.jpg",
         caption: "Bollywood dance at the college fest 💃",
       },
       {
-        url: "https://picsum.photos/seed/aisha/400/500",
+        url: "/assets/generated/aisha-library.dim_400x500.jpg",
         caption: "my reading list never ends 📚",
       },
       {
-        url: "https://picsum.photos/seed/aisha/400/500",
+        url: "/assets/generated/aisha-cafe.dim_400x500.jpg",
+        caption: "coffee dates and deep conversations ☕",
+      },
+      {
+        url: "/assets/generated/aisha-debate.dim_400x500.jpg",
+        caption: "justice is not optional 🎤",
+      },
+      {
+        url: "/assets/generated/aisha-travel.dim_400x500.jpg",
         caption: "solo trip to Delhi — found myself 🌍",
       },
     ],
@@ -274,7 +319,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "0.5 km",
-    online: true,
+    onlineStatus: "online",
     compatibility: 85,
     isDemo: true,
   },
@@ -286,25 +331,34 @@ export const PROFILES: Profile[] = [
     year: "2nd Year",
     mode: "dating",
     bio: "saving lives one textbook at a time 🩺 guitar on weekends",
-    interests: ["Healthcare", "Guitar", "Hiking", "Chess"],
-    photo: "https://picsum.photos/seed/dev/400/500",
+    interests: ["Healthcare", "Guitar", "Hiking", "Chess", "Movies"],
+    photo: "/assets/generated/dev-portrait.dim_400x500.jpg",
     isVerified: false,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/dev/400/500",
+        url: "/assets/generated/dev-portrait.dim_400x500.jpg",
         caption: "first anatomy practical done 🩺",
       },
       {
-        url: "https://picsum.photos/seed/dev/400/500",
+        url: "/assets/generated/dev-guitar.dim_400x500.jpg",
         caption: "guitar sessions fix everything 🎸",
       },
       {
-        url: "https://picsum.photos/seed/dev/400/500",
+        url: "/assets/generated/dev-library.dim_400x500.jpg",
+        caption: "anatomy > everything else rn 📖",
+      },
+      {
+        url: "/assets/generated/dev-chess.dim_400x500.jpg",
         caption: "chess is pure meditation ♟️",
       },
       {
-        url: "https://picsum.photos/seed/dev/400/500",
-        caption: "trekked 20km last Sunday — worth it 🤾",
+        url: "/assets/generated/dev-trekking.dim_400x500.jpg",
+        caption: "trekked 20km last Sunday — worth it 🏕️",
+      },
+      {
+        url: "/assets/generated/dev-lifestyle.dim_400x500.jpg",
+        caption: "rooftop sunsets after long shifts 🌇",
       },
     ],
     promptCards: [
@@ -320,7 +374,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "4.1 km",
-    online: false,
+    onlineStatus: "offline",
     compatibility: 82,
     isDemo: true,
   },
@@ -332,25 +386,34 @@ export const PROFILES: Profile[] = [
     year: "3rd Year",
     mode: "bff",
     bio: "painting the world in bold colors 🎨 gallery hunter",
-    interests: ["Painting", "Literature", "Cooking", "Concerts"],
-    photo: "https://picsum.photos/seed/sara/400/500",
+    interests: ["Painting", "Literature", "Cooking", "Concerts", "Art"],
+    photo: "/assets/generated/sara-portrait.dim_400x500.jpg",
     isVerified: false,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/sara/400/500",
-        caption: "my latest canvas still smells of acrylics 🎨",
+        url: "/assets/generated/sara-portrait.dim_400x500.jpg",
+        caption: "art is the only language I need 🎨",
       },
       {
-        url: "https://picsum.photos/seed/sara/400/500",
-        caption: "cooking for 10 people was chaotic but fun 🍳",
+        url: "/assets/generated/sara-painting.dim_400x500.jpg",
+        caption: "my latest canvas still smells of acrylics 🖌️",
       },
       {
-        url: "https://picsum.photos/seed/sara/400/500",
+        url: "/assets/generated/sara-library.dim_400x500.jpg",
+        caption: "my poetry journal is almost full 📖",
+      },
+      {
+        url: "/assets/generated/sara-cafe.dim_400x500.jpg",
+        caption: "indie cafe + good book = paradise 📚",
+      },
+      {
+        url: "/assets/generated/sara-concert.dim_400x500.jpg",
         caption: "front row at the indie concert last week 🎵",
       },
       {
-        url: "https://picsum.photos/seed/sara/400/500",
-        caption: "my poetry journal is almost full 📖",
+        url: "/assets/generated/sara-cooking.dim_400x500.jpg",
+        caption: "cooking for 10 people was chaotic but fun 🍳",
       },
     ],
     promptCards: [
@@ -367,7 +430,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "1.9 km",
-    online: true,
+    onlineStatus: "online",
     compatibility: 88,
     isDemo: true,
   },
@@ -379,25 +442,34 @@ export const PROFILES: Profile[] = [
     year: "2nd Year",
     mode: "dating",
     bio: "finance nerd by day, foodie by night 🍜 city explorer",
-    interests: ["Finance", "Food", "Badminton", "Movies"],
-    photo: "https://picsum.photos/seed/karan/400/500",
+    interests: ["Finance", "Food", "Badminton", "Movies", "Travel"],
+    photo: "/assets/generated/karan-portrait.dim_400x500.jpg",
     isVerified: false,
+    coverPhotoIndex: 0,
     photos: [
       {
-        url: "https://picsum.photos/seed/karan/400/500",
-        caption: "discovered the best chaat in the city 🍜",
-      },
-      {
-        url: "https://picsum.photos/seed/karan/400/500",
-        caption: "badminton state level 2 years running 🏸",
-      },
-      {
-        url: "https://picsum.photos/seed/karan/400/500",
+        url: "/assets/generated/karan-portrait.dim_400x500.jpg",
         caption: "finance internship taught me more than lectures 💼",
       },
       {
-        url: "https://picsum.photos/seed/karan/400/500",
+        url: "/assets/generated/karan-badminton.dim_400x500.jpg",
+        caption: "badminton state level 2 years running 🏸",
+      },
+      {
+        url: "/assets/generated/karan-library.dim_400x500.jpg",
+        caption: "markets open, brain engaged 📊",
+      },
+      {
+        url: "/assets/generated/karan-food.dim_400x500.jpg",
+        caption: "discovered the best chaat in the city 🍜",
+      },
+      {
+        url: "/assets/generated/karan-cinema.dim_400x500.jpg",
         caption: "late night IMAX show with the crew 🎬",
+      },
+      {
+        url: "/assets/generated/karan-lifestyle.dim_400x500.jpg",
+        caption: "city explorer, always finding hidden gems 🗺️",
       },
     ],
     promptCards: [
@@ -409,7 +481,7 @@ export const PROFILES: Profile[] = [
       },
     ],
     distance: "2.7 km",
-    online: false,
+    onlineStatus: "away",
     compatibility: 76,
     isDemo: true,
     isPro: true,
