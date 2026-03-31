@@ -16,6 +16,7 @@ export interface Profile {
   bio: string;
   interests: string[];
   photo: string;
+  photoUrl?: string;
   photos?: { url: string; caption: string }[];
   coverPhotoIndex?: number;
   promptCards?: PromptCard[];
@@ -63,23 +64,23 @@ export const PROFILES: Profile[] = [
     mode: "dating",
     bio: "chai lover & hackathon addict ☕ building things that matter",
     interests: ["Coding", "Music", "Hiking", "Coffee"],
-    photo: "/assets/generated/profile-maya.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/maya/400/500",
     isVerified: true,
     photos: [
       {
-        url: "/assets/generated/profile-maya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/maya/400/500",
         caption: "chai and code — my two loves ☕",
       },
       {
-        url: "/assets/generated/profile-maya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/maya/400/500",
         caption: "hackathon winner 3 times in a row 🏆",
       },
       {
-        url: "/assets/generated/profile-maya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/maya/400/500",
         caption: "weekend hikes keep me sane 🌿",
       },
       {
-        url: "/assets/generated/profile-maya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/maya/400/500",
         caption: "spotify wrapped said I'm a sad girl lol 🎧",
       },
     ],
@@ -110,23 +111,23 @@ export const PROFILES: Profile[] = [
     mode: "dating",
     bio: "basketball court to boardroom 🏀 aspiring founder",
     interests: ["Sports", "Finance", "Travel", "Startups"],
-    photo: "/assets/generated/profile-aryan.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/aryan/400/500",
     isVerified: true,
     photos: [
       {
-        url: "/assets/generated/profile-aryan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aryan/400/500",
         caption: "game day energy hits different 🏀",
       },
       {
-        url: "/assets/generated/profile-aryan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aryan/400/500",
         caption: "my pitch deck won regionals 🚀",
       },
       {
-        url: "/assets/generated/profile-aryan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aryan/400/500",
         caption: "solo trip to Manali was everything 🏔️",
       },
       {
-        url: "/assets/generated/profile-aryan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aryan/400/500",
         caption: "coffee shop mornings before 8am lectures ☕",
       },
     ],
@@ -156,23 +157,23 @@ export const PROFILES: Profile[] = [
     mode: "bff",
     bio: "figma and film 🎬 obsessed with visual stories",
     interests: ["Art", "Movies", "Yoga", "Photography"],
-    photo: "/assets/generated/profile-priya.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/priya/400/500",
     isVerified: false,
     photos: [
       {
-        url: "/assets/generated/profile-priya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/priya/400/500",
         caption: "golden hour in the design studio 🎨",
       },
       {
-        url: "/assets/generated/profile-priya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/priya/400/500",
         caption: "my film photography doesn't lie 📷",
       },
       {
-        url: "/assets/generated/profile-priya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/priya/400/500",
         caption: "Sunday yoga then Sunday cinema 🧘",
       },
       {
-        url: "/assets/generated/profile-priya.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/priya/400/500",
         caption: "this mural took 3 weeks and I'd do it again 🖌️",
       },
     ],
@@ -197,23 +198,23 @@ export const PROFILES: Profile[] = [
     mode: "dating",
     bio: "late nights debugging, early mornings running 🤖",
     interests: ["Robotics", "Gaming", "Coffee", "Cycling"],
-    photo: "/assets/generated/profile-rohan.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/rohan/400/500",
     isVerified: true,
     photos: [
       {
-        url: "/assets/generated/profile-rohan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/rohan/400/500",
         caption: "my robot arm finally works 🤖",
       },
       {
-        url: "/assets/generated/profile-rohan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/rohan/400/500",
         caption: "5am cycling before exams hits 🚴",
       },
       {
-        url: "/assets/generated/profile-rohan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/rohan/400/500",
         caption: "gaming is a legitimate life skill 🎮",
       },
       {
-        url: "/assets/generated/profile-rohan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/rohan/400/500",
         caption: "late night lab sessions with the squad 🔬",
       },
     ],
@@ -244,23 +245,23 @@ export const PROFILES: Profile[] = [
     mode: "bff",
     bio: "debate club president 🏗️ passionate about justice",
     interests: ["Politics", "Reading", "Dance", "Travel"],
-    photo: "/assets/generated/profile-aisha.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/aisha/400/500",
     isVerified: true,
     photos: [
       {
-        url: "/assets/generated/profile-aisha.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aisha/400/500",
         caption: "won nationals in debate last month 🏗️",
       },
       {
-        url: "/assets/generated/profile-aisha.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aisha/400/500",
         caption: "Bollywood dance at the college fest 💃",
       },
       {
-        url: "/assets/generated/profile-aisha.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aisha/400/500",
         caption: "my reading list never ends 📚",
       },
       {
-        url: "/assets/generated/profile-aisha.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/aisha/400/500",
         caption: "solo trip to Delhi — found myself 🌍",
       },
     ],
@@ -286,23 +287,23 @@ export const PROFILES: Profile[] = [
     mode: "dating",
     bio: "saving lives one textbook at a time 🩺 guitar on weekends",
     interests: ["Healthcare", "Guitar", "Hiking", "Chess"],
-    photo: "/assets/generated/profile-dev.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/dev/400/500",
     isVerified: false,
     photos: [
       {
-        url: "/assets/generated/profile-dev.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/dev/400/500",
         caption: "first anatomy practical done 🩺",
       },
       {
-        url: "/assets/generated/profile-dev.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/dev/400/500",
         caption: "guitar sessions fix everything 🎸",
       },
       {
-        url: "/assets/generated/profile-dev.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/dev/400/500",
         caption: "chess is pure meditation ♟️",
       },
       {
-        url: "/assets/generated/profile-dev.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/dev/400/500",
         caption: "trekked 20km last Sunday — worth it 🤾",
       },
     ],
@@ -332,23 +333,23 @@ export const PROFILES: Profile[] = [
     mode: "bff",
     bio: "painting the world in bold colors 🎨 gallery hunter",
     interests: ["Painting", "Literature", "Cooking", "Concerts"],
-    photo: "/assets/generated/profile-sara.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/sara/400/500",
     isVerified: false,
     photos: [
       {
-        url: "/assets/generated/profile-sara.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/sara/400/500",
         caption: "my latest canvas still smells of acrylics 🎨",
       },
       {
-        url: "/assets/generated/profile-sara.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/sara/400/500",
         caption: "cooking for 10 people was chaotic but fun 🍳",
       },
       {
-        url: "/assets/generated/profile-sara.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/sara/400/500",
         caption: "front row at the indie concert last week 🎵",
       },
       {
-        url: "/assets/generated/profile-sara.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/sara/400/500",
         caption: "my poetry journal is almost full 📖",
       },
     ],
@@ -379,23 +380,23 @@ export const PROFILES: Profile[] = [
     mode: "dating",
     bio: "finance nerd by day, foodie by night 🍜 city explorer",
     interests: ["Finance", "Food", "Badminton", "Movies"],
-    photo: "/assets/generated/profile-karan.dim_400x500.jpg",
+    photo: "https://picsum.photos/seed/karan/400/500",
     isVerified: false,
     photos: [
       {
-        url: "/assets/generated/profile-karan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/karan/400/500",
         caption: "discovered the best chaat in the city 🍜",
       },
       {
-        url: "/assets/generated/profile-karan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/karan/400/500",
         caption: "badminton state level 2 years running 🏸",
       },
       {
-        url: "/assets/generated/profile-karan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/karan/400/500",
         caption: "finance internship taught me more than lectures 💼",
       },
       {
-        url: "/assets/generated/profile-karan.dim_400x500.jpg",
+        url: "https://picsum.photos/seed/karan/400/500",
         caption: "late night IMAX show with the crew 🎬",
       },
     ],

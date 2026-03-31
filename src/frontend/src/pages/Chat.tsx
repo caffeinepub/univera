@@ -413,7 +413,7 @@ export function Chat() {
   );
 
   return (
-    <div className="app-shell bg-app flex flex-col h-[100dvh]">
+    <div className="app-shell bg-app flex flex-col h-[100dvh] overflow-hidden">
       {/* Header */}
       <header className="glass-dark px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button
@@ -426,7 +426,11 @@ export function Chat() {
         </button>
         <div className="relative w-10 h-10 flex-shrink-0">
           <ImgWithFallback
-            src={profile.photo}
+            src={
+              profile.photoUrl ??
+              profile.photos?.[Number(profile.coverPhotoIndex ?? 0)]?.url ??
+              profile.photo
+            }
             alt={profile.name}
             className="w-10 h-10 rounded-full object-cover neon-border-violet"
             fallbackAvatar={avatarString}
@@ -600,7 +604,7 @@ export function Chat() {
 
       {/* Messages */}
       <div
-        className={`flex-1 overflow-y-auto px-4 py-2 space-y-3 ${activeTheme.bg}`}
+        className={`flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 space-y-3 ${activeTheme.bg}`}
       >
         {/* Loading state for real profiles */}
         {!isDemo && !messagesLoaded && (

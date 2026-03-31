@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { PROFILES } from "../data/mockData";
+import { ImgWithFallback } from "./ImgWithFallback";
 
 interface Particle {
   id: number;
@@ -27,7 +28,8 @@ const COLORS = [
 ];
 
 export function MatchModal() {
-  const { showMatchModal, matchedProfile, setMatchModal, addMatch } = useApp();
+  const { showMatchModal, matchedProfile, setMatchModal, addMatch, user } =
+    useApp();
   const navigate = useNavigate();
   const [particles, setParticles] = useState<Particle[]>([]);
 
@@ -51,7 +53,7 @@ export function MatchModal() {
 
   if (!showMatchModal || !matchedProfile) return null;
 
-  const myPhoto = PROFILES[0].photo;
+  const myPhoto = user?.photoUrl ?? user?.photos?.[0]?.url ?? PROFILES[0].photo;
 
   const handleMessage = () => {
     addMatch(matchedProfile.id);
@@ -180,10 +182,11 @@ export function MatchModal() {
               boxShadow: "0 0 20px rgba(236,72,153,0.5)",
             }}
           >
-            <img
+            <ImgWithFallback
               src={myPhoto}
               alt="You"
               className="w-full h-full object-cover"
+              fallbackAvatar="🧑"
             />
           </motion.div>
 
@@ -210,10 +213,15 @@ export function MatchModal() {
               boxShadow: "0 0 20px rgba(124,58,237,0.5)",
             }}
           >
-            <img
-              src={matchedProfile.photo}
+            <ImgWithFallback
+              src={
+                matchedProfile.photos?.[
+                  Number(matchedProfile.coverPhotoIndex ?? 0)
+                ]?.url ?? matchedProfile.photo
+              }
               alt={matchedProfile.name}
               className="w-full h-full object-cover"
+              fallbackAvatar="🧑"
             />
           </motion.div>
         </div>
