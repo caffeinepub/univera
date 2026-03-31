@@ -335,7 +335,7 @@ function SwipeCard({
       className="select-none touch-none"
     >
       <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-card-dark">
-        {/* Cover photo from photos array using coverPhotoIndex, fallback to legacy photo field */}
+        {/* Cover photo */}
         <ImgWithFallback
           src={
             profile.photos?.[Number(profile.coverPhotoIndex ?? 0)]?.url ??
@@ -347,7 +347,8 @@ function SwipeCard({
           draggable={false}
           style={{ opacity: 1 }}
         />
-        {/* FIX: Soft gradient overlay instead of heavy black */}
+
+        {/* Soft gradient overlay — always rendered for visual depth */}
         <div
           className="absolute inset-0"
           style={{
@@ -356,140 +357,143 @@ function SwipeCard({
           }}
         />
 
-        {/* FIX: Removed backdropFilter blur from AI Match badge */}
-        <div
-          className="absolute top-4 right-4 rounded-full px-3 py-1.5 flex items-center gap-1.5"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(124,58,237,0.85), rgba(236,72,153,0.85))",
-            border: "1px solid rgba(255,255,255,0.2)",
-          }}
-        >
-          <span className="text-xs font-bold text-white">
-            ✨ AI Match {profile.compatibility}%
-          </span>
-        </div>
-
-        {profile.isPro && (
-          <div
-            className="absolute top-4 left-4 rounded-full px-3 py-1.5 text-xs font-bold text-white"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #EC4899)" }}
-          >
-            ⭐ Best Match
-          </div>
-        )}
-
-        {/* Swipe stamps */}
-        <motion.div
-          className="swipe-stamp-like"
-          style={{ opacity: likeOpacity }}
-        >
-          LIKE
-        </motion.div>
-        <motion.div
-          className="swipe-stamp-nope"
-          style={{ opacity: nopeOpacity }}
-        >
-          NOPE
-        </motion.div>
-        <motion.div
-          className="swipe-stamp-super"
-          style={{ opacity: superOpacity }}
-        >
-          SUPER
-        </motion.div>
-
-        {/* Super Like stamp overlay */}
-        {superLikeStamp && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.6, rotate: -12 }}
-            animate={{ opacity: 1, scale: 1, rotate: -12 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-            style={{
-              border: "4px solid #3B82F6",
-              borderRadius: 8,
-              padding: "6px 16px",
-              color: "#3B82F6",
-              fontSize: 28,
-              fontWeight: 900,
-              letterSpacing: 3,
-              fontFamily: "var(--font-display, serif)",
-              textShadow: "0 0 20px rgba(59,130,246,0.8)",
-              boxShadow: "0 0 20px rgba(59,130,246,0.4)",
-              background: "rgba(0,0,0,0.3)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            ⭐ SUPER LIKE!
-          </motion.div>
-        )}
-
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          {isTop && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onView();
-              }}
-              className="mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+        {/* ── Top card only: badges, stamps, info ── */}
+        {isTop && (
+          <>
+            {/* AI Match badge */}
+            <div
+              className="absolute top-4 right-4 rounded-full px-3 py-1.5 flex items-center gap-1.5"
               style={{
-                background: "rgba(255,255,255,0.18)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: "#fff",
+                background:
+                  "linear-gradient(135deg, rgba(124,58,237,0.85), rgba(236,72,153,0.85))",
+                border: "1px solid rgba(255,255,255,0.2)",
               }}
-              data-ocid="swipe.secondary_button"
             >
-              <Eye size={12} /> View Profile
-            </button>
-          )}
-          <div className="flex items-end justify-between mb-1">
-            {/* FIX: font-black (900) + text shadow for name */}
-            <h2
-              className="font-display text-3xl font-black text-white"
-              style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
-            >
-              {profile.name}, {profile.age}
-            </h2>
-            {profile.online && (
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs text-green-400 font-medium">
-                  Online
-                </span>
+              <span className="text-xs font-bold text-white">
+                ✨ AI Match {profile.compatibility}%
+              </span>
+            </div>
+
+            {/* Pro / Best Match badge */}
+            {profile.isPro && (
+              <div
+                className="absolute top-4 left-4 rounded-full px-3 py-1.5 text-xs font-bold text-white"
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                }}
+              >
+                ⭐ Best Match
               </div>
             )}
-          </div>
-          {/* FIX: text shadow on major/year */}
-          <p
-            className="text-white/80 text-sm mb-1"
-            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
-          >
-            {profile.major} · {profile.year}
-          </p>
-          {/* FIX: text shadow on bio */}
-          <p
-            className="text-white/70 text-xs mb-3"
-            style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
-          >
-            {profile.bio}
-          </p>
-          {/* FIX: Removed backdrop-blur-sm from interest tags */}
-          <div className="flex flex-wrap gap-1.5">
-            {profile.interests.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/15 text-white"
+
+            {/* Swipe stamps */}
+            <motion.div
+              className="swipe-stamp-like"
+              style={{ opacity: likeOpacity }}
+            >
+              LIKE
+            </motion.div>
+            <motion.div
+              className="swipe-stamp-nope"
+              style={{ opacity: nopeOpacity }}
+            >
+              NOPE
+            </motion.div>
+            <motion.div
+              className="swipe-stamp-super"
+              style={{ opacity: superOpacity }}
+            >
+              SUPER
+            </motion.div>
+
+            {/* Super Like stamp overlay */}
+            {superLikeStamp && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.6, rotate: -12 }}
+                animate={{ opacity: 1, scale: 1, rotate: -12 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{
+                  border: "4px solid #3B82F6",
+                  borderRadius: 8,
+                  padding: "6px 16px",
+                  color: "#3B82F6",
+                  fontSize: 28,
+                  fontWeight: 900,
+                  letterSpacing: 3,
+                  fontFamily: "var(--font-display, serif)",
+                  textShadow: "0 0 20px rgba(59,130,246,0.8)",
+                  boxShadow: "0 0 20px rgba(59,130,246,0.4)",
+                  background: "rgba(0,0,0,0.3)",
+                  whiteSpace: "nowrap",
+                }}
               >
-                {tag}
-              </span>
-            ))}
-            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/70">
-              📍 {profile.distance}
-            </span>
-          </div>
-        </div>
+                ⭐ SUPER LIKE!
+              </motion.div>
+            )}
+
+            {/* Bottom info section */}
+            <div className="absolute bottom-0 left-0 right-0 p-5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onView();
+                }}
+                className="mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+                style={{
+                  background: "rgba(255,255,255,0.18)",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  color: "#fff",
+                }}
+                data-ocid="swipe.secondary_button"
+              >
+                <Eye size={12} /> View Profile
+              </button>
+              <div className="flex items-end justify-between mb-1">
+                <h2
+                  className="font-display text-3xl font-black text-white"
+                  style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+                >
+                  {profile.name}, {profile.age}
+                </h2>
+                {profile.online && (
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-xs text-green-400 font-medium">
+                      Online
+                    </span>
+                  </div>
+                )}
+              </div>
+              <p
+                className="text-white/80 text-sm mb-1"
+                style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+              >
+                {profile.major} · {profile.year}
+              </p>
+              <p
+                className="text-white/70 text-xs mb-3"
+                style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
+              >
+                {profile.bio}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.interests.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/15 text-white"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/70">
+                  📍 {profile.distance}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </motion.div>
   );
@@ -553,20 +557,17 @@ export function SwipeDeck() {
       if (dir === "up") {
         const ok = consumeSuperLike();
         if (!ok) {
-          // Out of super likes
           if (!user?.isPro) {
             setUpgradeReason("Get Unlimited Super Likes");
             setShowUpgradeModal(true);
           }
           return;
         }
-        // Show super like stamp
         setSuperLikeStampId(current.id);
         setTimeout(() => setSuperLikeStampId(null), 800);
       } else {
         const ok = consumeLike();
         if (!ok) {
-          // Out of likes — show rewarded ad first if under cap
           if (canWatchAd) {
             setShowRewardedAd(true);
           } else {
@@ -782,7 +783,6 @@ export function SwipeDeck() {
               className="flex flex-col items-center justify-center h-full text-center px-6"
               data-ocid="swipe.empty_state"
             >
-              {/* Animated heart */}
               <motion.div
                 animate={{ scale: [1, 1.15, 1] }}
                 transition={{
@@ -877,7 +877,6 @@ export function SwipeDeck() {
                 fill={superLikesLeft > 0 ? "#60a5fa" : "none"}
               />
             </button>
-            {/* Badge */}
             <span
               className="text-[10px] font-bold mt-0.5"
               style={{
@@ -886,7 +885,6 @@ export function SwipeDeck() {
             >
               ⭐ {superLikesLeft} left
             </span>
-            {/* Tooltip */}
             <AnimatePresence>
               {showSuperTooltip && (
                 <motion.div
@@ -961,12 +959,10 @@ export function SwipeDeck() {
         }}
       />
 
-      {/* Filters modal */}
       <AnimatePresence>
         {showFilters && <FiltersModal onClose={() => setShowFilters(false)} />}
       </AnimatePresence>
 
-      {/* Onboarding tutorial */}
       {showTutorial && (
         <OnboardingTutorial onDone={() => setShowTutorial(false)} />
       )}
