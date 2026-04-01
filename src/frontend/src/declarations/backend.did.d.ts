@@ -78,7 +78,30 @@ export interface Report {
   'reportId' : string,
   'reason' : string,
 }
+export interface Story {
+  'id' : string,
+  'storyType' : StoryType,
+  'userId' : Principal,
+  'createdAt' : Time,
+  'overlayText' : [] | [string],
+  'mediaUrl' : string,
+  'viewers' : Array<Principal>,
+  'youtubeVidId' : [] | [string],
+  'youtubeTtitle' : [] | [string],
+  'location' : [] | [string],
+}
+export type StoryType = { 'video' : null } |
+  { 'image' : null };
 export type Time = bigint;
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface UserPhoto { 'url' : string, 'caption' : string }
 export interface UserProfile {
   'age' : bigint,
@@ -106,6 +129,12 @@ export interface _CaffeineStorageRefillInformation {
 export interface _CaffeineStorageRefillResult {
   'success' : [] | [boolean],
   'topped_up_amount' : [] | [bigint],
+}
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
 }
 export interface _SERVICE {
   '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
@@ -144,31 +173,44 @@ export interface _SERVICE {
   >,
   'createNotifications' : ActorMethod<[Principal, NotificationType], string>,
   'createPost' : ActorMethod<[FeedPost, string], FeedPost>,
+  'createStory' : ActorMethod<[Story], undefined>,
   'deleteChat' : ActorMethod<[string], undefined>,
   'deleteMatch' : ActorMethod<[string], undefined>,
+  'deleteStory' : ActorMethod<[string], undefined>,
   'flagScreenshotAttempt' : ActorMethod<[string], undefined>,
+  'getActiveStories' : ActorMethod<[], Array<[Story, bigint]>>,
   'getBlockedUsers' : ActorMethod<[Principal], Array<Principal>>,
   'getBlockingUsers' : ActorMethod<[Principal], Array<Principal>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getChatThemes' : ActorMethod<[], Array<[string, string]>>,
   'getComments' : ActorMethod<[string], Array<Comment>>,
   'getLikes' : ActorMethod<[string], Array<Principal>>,
   'getMatch' : ActorMethod<[string], [] | [Match]>,
   'getMatches' : ActorMethod<[], Array<Match>>,
   'getMessages' : ActorMethod<[string], Array<ChatMessage>>,
+  'getMessagesAfter' : ActorMethod<[string, Time], Array<ChatMessage>>,
   'getNotifications' : ActorMethod<[Principal], Array<Notification>>,
   'getPosts' : ActorMethod<[], Array<PostData>>,
   'getPostsCreatedToday' : ActorMethod<[Principal], bigint>,
   'getReports' : ActorMethod<[], Array<Report>>,
+  'getStoryViewers' : ActorMethod<[string], [bigint, Array<Principal>]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isBlocked' : ActorMethod<[Principal, Principal], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'likePost' : ActorMethod<[string], [] | [bigint]>,
   'markNotificationsRead' : ActorMethod<[Principal], undefined>,
   'markReportReviewed' : ActorMethod<[string], undefined>,
+  'markStoryViewed' : ActorMethod<[string], undefined>,
   'reportUser' : ActorMethod<[string, Principal, string, string], undefined>,
+  'requestEmailOTP' : ActorMethod<
+    [string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
   'resetDailyLimits' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveChatTheme' : ActorMethod<[string, string], undefined>,
   'setCoverPhoto' : ActorMethod<[bigint], undefined>,
   'setVerificationImage' : ActorMethod<[string], undefined>,
   'toggleBlock' : ActorMethod<
@@ -176,12 +218,17 @@ export interface _SERVICE {
     { 'blockedSuccessfully' : boolean } |
       { 'unblockedSuccessfully' : boolean }
   >,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'unlikePost' : ActorMethod<[string], [] | [bigint]>,
   'updatePostsCreatedToday' : ActorMethod<[Principal], undefined>,
   'updateUserPhotos' : ActorMethod<[Array<UserPhoto>, bigint], undefined>,
-  'getMessagesAfter' : ActorMethod<[string, bigint], Array<ChatMessage>>,
-  'saveChatTheme' : ActorMethod<[string, string], undefined>,
-  'getChatThemes' : ActorMethod<[], Array<[string, string]>>,
+  'verifyEmailOTP' : ActorMethod<
+    [string, string],
+    { 'ok' : null } |
+      { 'expired' : null } |
+      { 'invalid' : null } |
+      { 'tooManyAttempts' : null }
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

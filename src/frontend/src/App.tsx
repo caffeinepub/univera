@@ -13,6 +13,7 @@ import { Chat } from "./pages/Chat";
 import { Feed } from "./pages/Feed";
 import { HelpCenter } from "./pages/HelpCenter";
 import { Home } from "./pages/Home";
+import { HomeFeed } from "./pages/HomeFeed";
 import { Landing } from "./pages/Landing";
 import { Matches } from "./pages/Matches";
 import { Onboarding } from "./pages/Onboarding";
@@ -39,6 +40,12 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/home",
   component: Home,
+});
+
+const homeFeedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/home-feed",
+  component: HomeFeed,
 });
 
 const onboardingRoute = createRoute({
@@ -110,6 +117,7 @@ const helpRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   landingRoute,
   homeRoute,
+  homeFeedRoute,
   onboardingRoute,
   appRoute,
   feedRoute,

@@ -12,8 +12,6 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
 import Outcall "http-outcalls/outcall";
 
-
-
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -237,6 +235,26 @@ actor {
     #err : Err;
   };
 
+  // ─── Stories Feature ───────────────────────────────────────────────────────
+
+  public type StoryType = {
+    #image;
+    #video;
+  };
+
+  public type Story = {
+    id : Text;
+    userId : Principal;
+    mediaUrl : Text;
+    storyType : StoryType;
+    overlayText : ?Text;
+    location : ?Text;
+    youtubeVidId : ?Text;
+    youtubeTtitle : ?Text;
+    createdAt : Time.Time;
+    viewers : [Principal];
+  };
+
   let userProfiles = Map.empty<Principal, UserProfile>();
   let notificationMap = Map.empty<Text, NotificationInternal>();
   let commentMap = Map.empty<Text, CommentInternal>();
@@ -247,6 +265,8 @@ actor {
   let blocks = Map.empty<Text, Block>();
   let reports = Map.empty<Text, Report>();
   let chatMessages = Map.empty<Text, ChatMessage>();
+  let stories = Map.empty<Text, Story>();
+
   // Per-user chat themes: key = principal + "_" + matchId
   let chatThemeMap = Map.empty<Text, Text>();
 
@@ -976,4 +996,86 @@ actor {
     result;
   };
 
+  // ─── Story feature functions ──────────────────────────────────────────────
+
+  public shared ({ caller }) func createStory(story : Story) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create stories");
+    };
+    let newStory : Story = {
+      story with
+      id = story.id;
+      userId = caller;
+      createdAt = Time.now();
+      viewers = [];
+    };
+    stories.add(story.id, newStory);
+  };
+
+  public shared ({ caller }) func markStoryViewed(storyId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view stories");
+    };
+    switch (stories.get(storyId)) {
+      case (null) { Runtime.trap("Story not found") };
+      case (?existingStory) {
+        let alreadyViewed = existingStory.viewers.find(func(p) { p == caller }) != null;
+        if (not alreadyViewed) {
+          let updatedViewers = [caller].concat(existingStory.viewers);
+          let updatedStory = {
+            existingStory with viewers = updatedViewers;
+          };
+          stories.add(storyId, updatedStory);
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteStory(storyId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete stories");
+    };
+    switch (stories.get(storyId)) {
+      case (null) { Runtime.trap("Story not found") };
+      case (?existingStory) {
+        if (existingStory.userId != caller) {
+          Runtime.trap("Unauthorized: You can only delete your own stories");
+        };
+        stories.remove(storyId);
+      };
+    };
+  };
+
+  public query ({ caller }) func getActiveStories() : async [(Story, Nat)] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view stories");
+    };
+    let expirationTime = Time.now() - (24 * 60 * 60 * 1_000_000_000);
+
+    let filteredStories = stories.filter(
+      func(_k, story) { story.createdAt > expirationTime }
+    );
+    filteredStories.values().toArray().map(
+      func(story) {
+        let viewerCount = story.viewers.size();
+        (story, viewerCount);
+      }
+    );
+  };
+
+  public query ({ caller }) func getStoryViewers(storyId : Text) : async (Nat, [Principal]) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view story viewers");
+    };
+    switch (stories.get(storyId)) {
+      case (null) { Runtime.trap("Story not found") };
+      case (?story) {
+        if (story.userId != caller) {
+          Runtime.trap("Unauthorized: You can only view viewers of your own stories");
+        };
+        let totalViewers = story.viewers.size();
+        (totalViewers, story.viewers);
+      };
+    };
+  };
 };

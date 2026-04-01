@@ -110,32 +110,77 @@ export type FeedPost = {
   createdAt: string;
 };
 
+// ─── Stories ─────────────────────────────────────────────────────────────────
+export interface StoryItem {
+  id: string;
+  storyType: "image" | "video";
+  userId: string;
+  userName: string;
+  userPhoto: string;
+  createdAt: number;
+  overlayText?: string;
+  mediaUrl: string;
+  viewerCount: number;
+  youtubeVidId?: string;
+  youtubeTtitle?: string;
+  location?: string;
+  isOwnStory?: boolean;
+}
+
+const MOCK_STORIES: StoryItem[] = PROFILES.map((p, i) => ({
+  id: `demo_story_${p.id}`,
+  storyType: "image" as const,
+  userId: `demo_user_${p.id}`,
+  userName: p.name,
+  userPhoto: p.photo,
+  createdAt: Date.now() - i * 2 * 60 * 60 * 1000,
+  mediaUrl: p.photos?.[0]?.url ?? p.photo,
+  viewerCount: Math.floor(Math.random() * 18) + 2,
+  location: "DBS Campus",
+  overlayText: p.bio.slice(0, 40),
+}));
+
 function formatTimeAgo(nanosTimestamp: bigint): string {
   const ms = Number(nanosTimestamp / 1_000_000n);
   const diff = Date.now() - ms;
-  if (diff < 60000) return "Just now";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  if (diff < 172800000) return "Yesterday";
-  return `${Math.floor(diff / 86400000)}d ago`;
+  if (diff < 60_000) return "Just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
 function backendNotiTypeToFrontend(
   t: NotificationType,
 ): AppNotification["type"] {
-  if (t === NotificationType.likePhoto) return "like_photo";
-  if (t === NotificationType.likePost) return "like_post";
-  if (t === NotificationType.commentPost) return "comment_post";
-  return "like_prompt";
+  switch (t) {
+    case NotificationType.likePhoto:
+      return "like_photo";
+    case NotificationType.likePost:
+      return "like_post";
+    case NotificationType.commentPost:
+      return "comment_post";
+    case NotificationType.likePrompt:
+      return "like_prompt";
+    default:
+      return "like_photo";
+  }
 }
 
 function frontendNotiTypeToBackend(
   t: AppNotification["type"],
 ): NotificationType {
-  if (t === "like_photo") return NotificationType.likePhoto;
-  if (t === "like_post") return NotificationType.likePost;
-  if (t === "comment_post") return NotificationType.commentPost;
-  return NotificationType.likePrompt;
+  switch (t) {
+    case "like_photo":
+      return NotificationType.likePhoto;
+    case "like_post":
+      return NotificationType.likePost;
+    case "comment_post":
+      return NotificationType.commentPost;
+    case "like_prompt":
+      return NotificationType.likePrompt;
+    default:
+      return NotificationType.likePhoto;
+  }
 }
 
 export function lsGet(key: string): string | null {
@@ -145,6 +190,7 @@ export function lsGet(key: string): string | null {
     return null;
   }
 }
+
 export function lsSet(key: string, val: string) {
   try {
     localStorage.setItem(key, val);
@@ -261,6 +307,15 @@ interface AppContextType {
     text: string,
     msgId?: string,
   ) => Promise<boolean>;
+  // Stories
+  stories: StoryItem[];
+  viewedStories: string[];
+  loadStories: () => Promise<void>;
+  addStory: (
+    story: Omit<StoryItem, "id" | "createdAt" | "viewerCount" | "isOwnStory">,
+  ) => Promise<void>;
+  deleteStory: (id: string) => Promise<void>;
+  markStoryViewed: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -375,54 +430,160 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   );
 
-  const setChatTheme = (chatId: string, theme: string) => {
-    setChatThemesState((prev) => {
-      const next = { ...prev, [chatId]: theme };
-      lsSet("univera_chat_themes", JSON.stringify(next));
-      return next;
-    });
-    // Fire-and-forget backend save (method declared in backend.d.ts, exists at runtime)
-    if (actor) {
-      (
-        actor as unknown as {
-          saveChatTheme(m: string, t: string): Promise<void>;
-        }
-      )
-        .saveChatTheme(chatId, theme)
-        .catch(() => {});
-    }
-  };
+  const setChatTheme = useCallback(
+    async (chatId: string, theme: string) => {
+      setChatThemesState((prev) => {
+        const next = { ...prev, [chatId]: theme };
+        lsSet("univera_chat_themes", JSON.stringify(next));
+        return next;
+      });
+      if (!actor) return;
+      try {
+        await actor.saveChatTheme(chatId, theme);
+      } catch {
+        /* ignore */
+      }
+    },
+    [actor],
+  );
 
-  // ─── Other existing state ─────────────────────────────────────────────────
+  // ─── Stories ─────────────────────────────────────────────────────────────────
+  const [stories, setStories] = useState<StoryItem[]>(MOCK_STORIES);
+  const [viewedStories, setViewedStories] = useState<string[]>(() => {
+    try {
+      return JSON.parse(lsGet("univera_viewed_stories") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const loadStories = useCallback(async () => {
+    if (!actor) return;
+    try {
+      const raw = await actor.getActiveStories();
+      const mapped: StoryItem[] = raw.map(([s, count]) => ({
+        id: s.id,
+        storyType: s.storyType === "video" ? "video" : "image",
+        userId: s.userId.toString(),
+        userName: "Student",
+        userPhoto: "/assets/generated/maya-portrait.dim_400x500.jpg",
+        createdAt: Number(s.createdAt / 1_000_000n),
+        overlayText: s.overlayText,
+        mediaUrl: s.mediaUrl,
+        viewerCount: Number(count),
+        youtubeVidId: s.youtubeVidId,
+        youtubeTtitle: s.youtubeTtitle,
+        location: s.location,
+      }));
+      // Merge with mock stories, real ones take priority
+      setStories((prev) => {
+        const realIds = new Set(mapped.map((s) => s.id));
+        const mocks = prev.filter(
+          (s) => s.id.startsWith("demo_story_") && !realIds.has(s.id),
+        );
+        return [...mapped, ...mocks];
+      });
+    } catch {
+      // Keep mock stories on failure
+    }
+  }, [actor]);
+
+  const addStory = useCallback(
+    async (
+      story: Omit<StoryItem, "id" | "createdAt" | "viewerCount" | "isOwnStory">,
+    ) => {
+      const id = `story_${Date.now()}`;
+      const newStory: StoryItem = {
+        ...story,
+        id,
+        createdAt: Date.now(),
+        viewerCount: 0,
+        isOwnStory: true,
+      };
+      setStories((prev) => [newStory, ...prev]);
+      if (!actor) return;
+      try {
+        const principal = identity
+          ? identity.getPrincipal()
+          : Principal.anonymous();
+        await actor.createStory({
+          id,
+          storyType:
+            story.storyType === "video" ? ("video" as any) : ("image" as any),
+          userId: principal,
+          createdAt: BigInt(Date.now()) * 1_000_000n,
+          overlayText: story.overlayText,
+          mediaUrl: story.mediaUrl,
+          viewers: [],
+          youtubeVidId: story.youtubeVidId,
+          youtubeTtitle: story.youtubeTtitle,
+          location: story.location,
+        });
+      } catch {
+        /* ignore backend failure */
+      }
+    },
+    [actor, identity],
+  );
+
+  const deleteStory = useCallback(
+    async (id: string) => {
+      setStories((prev) => prev.filter((s) => s.id !== id));
+      if (!actor) return;
+      try {
+        await actor.deleteStory(id);
+      } catch {
+        /* ignore */
+      }
+    },
+    [actor],
+  );
+
+  const markStoryViewed = useCallback(
+    async (id: string) => {
+      setViewedStories((prev) => {
+        if (prev.includes(id)) return prev;
+        const next = [...prev, id];
+        lsSet("univera_viewed_stories", JSON.stringify(next));
+        return next;
+      });
+      setStories((prev) =>
+        prev.map((s) =>
+          s.id === id ? { ...s, viewerCount: s.viewerCount + 1 } : s,
+        ),
+      );
+      if (!actor) return;
+      try {
+        await actor.markStoryViewed(id);
+      } catch {
+        /* ignore */
+      }
+    },
+    [actor],
+  );
+
+  // ─── Matches / profiles ──────────────────────────────────────────────────────
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
   const [currentProfileIndex, setCurrentProfileIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [likesReceived, setLikesReceived] =
     useState<LikeReceived[]>(MOCK_LIKES_RECEIVED);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsCreatedToday, setPostsCreatedToday] = useState(0);
-  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
-  const [tutorialDone, setTutorialDoneState] = useState(() => {
+  const [tutorialDoneState, setTutorialDoneState] = useState(() => {
     return lsGet("univera_tutorial_done") === "true";
   });
 
-  // ─── Reset logic ─────────────────────────────────────────────────────────
+  // ─── Reset logic ────────────────────────────────────────────────────────────
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset logic deps
   const checkAndReset = useCallback(() => {
     const now = Date.now();
-
-    // Check subscription expiry
-    if (subscriptionExpiry && now > subscriptionExpiry) {
-      setPlanTypeState("free");
-      lsSet("univera_plan_type", "free");
-      lsSet("univera_plan_expiry", "");
-      setSubscriptionExpiry(null);
-    }
-
-    // Reset swipes every 24h
+    // Reset swipes daily
     if (now - lastSwipeResetTime > 86_400_000) {
       setDailySwipesUsed(0);
       lsSet("univera_daily_swipes_used", "0");
@@ -430,8 +591,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLastSwipeResetTime(ts);
       lsSet("univera_last_swipe_reset", String(ts));
     }
-
-    // Reset ads every 24h
+    // Reset ads daily
     if (now - lastAdResetTime > 86_400_000) {
       setAdsWatchedToday(0);
       lsSet("univera_ads_watched_today", "0");
@@ -439,19 +599,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLastAdResetTime(ts);
       lsSet("univera_last_ad_reset", String(ts));
     }
-
-    // Reset super likes
-    const currentPlan = (lsGet("univera_plan_type") as PlanType) ?? "free";
-    const superLikeCycle = currentPlan === "monthly" ? 86_400_000 : 604_800_000;
-    if (currentPlan !== "yearly" && now - lastSuperLikeReset > superLikeCycle) {
-      const newVal = PLAN_LIMITS[currentPlan].superLikesPerCycle;
-      setSuperLikesRemaining(newVal);
-      lsSet("univera_super_likes_remaining", String(newVal));
+    // Reset super likes based on plan
+    const slCycle = planType === "monthly" ? 86_400_000 : 604_800_000;
+    if (planType !== "yearly" && now - lastSuperLikeReset > slCycle) {
+      const newSL = PLAN_LIMITS[planType].superLikesPerCycle;
+      setSuperLikesRemaining(newSL);
+      lsSet("univera_super_likes_remaining", String(newSL));
       const ts = now;
       setLastSuperLikeReset(ts);
       lsSet("univera_last_super_like_reset", String(ts));
     }
-
     // Reset boosts weekly
     if (now - lastBoostReset > 604_800_000) {
       setBoostsUsedThisWeek(0);
@@ -466,6 +623,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lastSuperLikeReset,
     lastBoostReset,
     subscriptionExpiry,
+    planType,
   ]);
 
   // Run reset check on mount and every minute
@@ -622,16 +780,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Safety features
   const blockUser = useCallback(
-    (userId: string) => {
+    (uid: string) => {
       setBlockedUsers((prev) => {
-        if (prev.includes(userId)) return prev;
-        const next = [...prev, userId];
+        if (prev.includes(uid)) return prev;
+        const next = [...prev, uid];
         lsSet("univera_blocked_users", JSON.stringify(next));
         return next;
       });
       if (actor) {
         try {
-          actor.toggleBlock(Principal.fromText(userId));
+          actor.toggleBlock(Principal.fromText(uid));
         } catch {
           /* ignore invalid principal for mock data */
         }
@@ -641,20 +799,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const reportUser = useCallback(
-    (userId: string, reason: string, details: string) => {
+    (uid: string, reason: string, details: string) => {
       setReportedUsers((prev) => {
-        if (prev.includes(userId)) return prev;
-        return [...prev, userId];
+        if (prev.includes(uid)) return prev;
+        return [...prev, uid];
       });
       if (actor) {
         const reportId = `r${Date.now()}`;
         try {
-          actor.reportUser(
-            reportId,
-            Principal.fromText(userId),
-            reason,
-            details,
-          );
+          actor.reportUser(reportId, Principal.fromText(uid), reason, details);
         } catch {
           /* ignore invalid principal for mock data */
         }
@@ -739,36 +892,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [actor, identity],
   );
 
-  // Sync chat themes from backend (backend wins over localStorage for conflicts)
+  // Sync chat themes from backend
   const syncChatThemes = useCallback(async () => {
     if (!actor) return;
     try {
-      // getChatThemes is declared in backend.d.ts and exists at runtime
-      const themes = await (
-        actor as unknown as {
-          getChatThemes(): Promise<Array<[string, string]>>;
+      const themes = await (actor as any).getChatThemes?.();
+      if (Array.isArray(themes)) {
+        const obj: Record<string, string> = {};
+        for (const [k, v] of themes) {
+          obj[k] = v;
         }
-      ).getChatThemes();
-      if (themes.length === 0) return;
-      setChatThemesState((prev) => {
-        const next = { ...prev };
-        for (const [chatId, theme] of themes) {
-          next[chatId] = theme;
-        }
-        lsSet("univera_chat_themes", JSON.stringify(next));
-        return next;
-      });
+        setChatThemesState((prev) => ({ ...obj, ...prev }));
+      }
     } catch {
-      // Ignore sync errors
+      /* ignore */
     }
   }, [actor]);
 
-  // Load posts from backend
+  // ─── Posts (Feed) ───────────────────────────────────────────────────────────
   const loadPosts = useCallback(async () => {
     if (!actor) return;
     setPostsLoading(true);
     try {
       const rawPosts = await actor.getPosts();
+      const principal = getCallerPrincipal();
       const mapped: FeedPost[] = rawPosts.map((pd) => ({
         id: pd.post.id,
         userId: pd.post.userId.toString(),
@@ -776,27 +923,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userPhoto: pd.post.userPhoto,
         userAge: Number(pd.post.userAge),
         isVerified: pd.post.isVerified,
-        postImage: pd.post.postImage ?? undefined,
-        prompt: pd.post.prompt ?? undefined,
-        promptAnswer: pd.post.promptAnswer ?? undefined,
-        caption: pd.post.caption ?? undefined,
+        postImage: pd.post.postImage,
+        prompt: pd.post.prompt,
+        promptAnswer: pd.post.promptAnswer,
+        caption: pd.post.caption,
         likesCount: Number(pd.likesCount),
-        likedByMe: pd.didLike,
+        likedByMe:
+          pd.post.userId.toString() === principal.toString()
+            ? false
+            : pd.didLike,
         comments: [],
         createdAt: formatTimeAgo(pd.post.createdAt),
       }));
-      mapped.sort((a, b) => {
-        const idA = Number(BigInt(a.id.replace(/[^0-9]/g, "") || "0"));
-        const idB = Number(BigInt(b.id.replace(/[^0-9]/g, "") || "0"));
-        return idB - idA;
-      });
       setPosts(mapped);
-    } catch (e) {
-      console.error("Failed to load posts", e);
+    } catch {
+      /* ignore */
     } finally {
       setPostsLoading(false);
     }
-  }, [actor]);
+  }, [actor, getCallerPrincipal]);
 
   // Load notifications from backend
   const loadNotifications = useCallback(async () => {
@@ -854,13 +999,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadNotifications();
       refreshUserProfile();
       syncChatThemes();
+      loadStories();
       // Load backend matches and merge with INITIAL_MATCHES
       actor
         .getMatches()
         .then((backendMatches) => {
           const frontendMatches: Match[] = backendMatches.map((m) => ({
             id: m.matchId,
-            profileId: m.matchId, // provisional — won't find in PROFILES, filtered in Matches.tsx
+            profileId: m.matchId,
             matchedAt: "Matched",
             lastMessage: "Say hello! 👋",
             unread: 0,
@@ -876,7 +1022,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actor]);
 
   const updateUserPhotos = useCallback(
@@ -1233,7 +1378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         boostActive,
         boostExpiresAt,
         activateBoost,
-        tutorialDone,
+        tutorialDone: tutorialDoneState,
         setTutorialDone,
         currentUserOnlineStatus,
         setCurrentUserOnlineStatus,
@@ -1260,6 +1405,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userId,
         loadChatMessages,
         sendChatMessage,
+        // Stories
+        stories,
+        viewedStories,
+        loadStories,
+        addStory,
+        deleteStory,
+        markStoryViewed,
       }}
     >
       {children}

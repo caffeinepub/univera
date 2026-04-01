@@ -316,11 +316,20 @@ export function Profile() {
           </button>
           <button
             type="button"
-            onClick={() => setEditing(!editing)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setEditing((prev) => !prev)}
+            className={`transition-all active:scale-90 cursor-pointer px-2 py-1 rounded-lg ${
+              editing
+                ? "text-white font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            style={
+              editing
+                ? { background: "linear-gradient(135deg,#7C3AED,#EC4899)" }
+                : {}
+            }
             data-ocid="profile.edit_button"
           >
-            <Edit2 size={20} />
+            {editing ? <X size={18} /> : <Edit2 size={20} />}
           </button>
         </div>
       </header>

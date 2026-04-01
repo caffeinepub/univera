@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bell,
+  Camera,
   Eye,
   Heart,
   MessageCircle,
@@ -512,7 +513,6 @@ export function SwipeDeck() {
     consumeSuperLike,
     addMatch,
     setMatchModal,
-    superLikesLeft,
     dailySwipesUsed,
     swipesLimit,
     nextSwipeResetIn,
@@ -542,7 +542,6 @@ export function SwipeDeck() {
   const [showTutorial, setShowTutorial] = useState(!tutorialDone);
   const [showFilters, setShowFilters] = useState(false);
   const [superLikeStampId, setSuperLikeStampId] = useState<string | null>(null);
-  const [showSuperTooltip, setShowSuperTooltip] = useState(false);
 
   const rewardType: "likes" | "superlike" =
     adsWatched % 2 === 1 ? "superlike" : "likes";
@@ -599,15 +598,6 @@ export function SwipeDeck() {
     incrementAdsWatched();
   };
 
-  const handleSuperLikeClick = () => {
-    if (superLikesLeft === 0 && !user?.isPro) {
-      setShowSuperTooltip(true);
-      setTimeout(() => setShowSuperTooltip(false), 2500);
-      return;
-    }
-    handleSwipe("up");
-  };
-
   const exitX =
     exitCard?.dir === "right" ? 500 : exitCard?.dir === "left" ? -500 : 0;
   const exitY = exitCard?.dir === "up" ? -500 : 0;
@@ -649,6 +639,15 @@ export function SwipeDeck() {
               size={22}
               className="text-muted-foreground hover:text-foreground transition-colors"
             />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/home-feed" })}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            data-ocid="app.link"
+            title="Stories"
+          >
+            <Camera size={22} />
           </button>
           <button
             type="button"
@@ -870,48 +869,6 @@ export function SwipeDeck() {
           >
             <X size={26} className="text-red-400" />
           </button>
-
-          {/* Super Like */}
-          <div className="relative flex flex-col items-center">
-            <button
-              type="button"
-              onClick={handleSuperLikeClick}
-              className="w-12 h-12 rounded-full glass-card flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform"
-              data-ocid="swipe.toggle"
-            >
-              <Star
-                size={20}
-                className="text-blue-400"
-                fill={superLikesLeft > 0 ? "#60a5fa" : "none"}
-              />
-            </button>
-            <span
-              className="text-[10px] font-bold mt-0.5"
-              style={{
-                color: superLikesLeft > 0 ? "#60a5fa" : "rgba(255,255,255,0.3)",
-              }}
-            >
-              ⭐ {superLikesLeft} left
-            </span>
-            <AnimatePresence>
-              {showSuperTooltip && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold text-white pointer-events-none z-20"
-                  style={{
-                    background: "linear-gradient(135deg, #1e1033, #2a1245)",
-                    border: "1px solid rgba(124,58,237,0.4)",
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-                  }}
-                  data-ocid="swipe.tooltip"
-                >
-                  Get more with Pro ✨
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           {/* Like */}
           <button

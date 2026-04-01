@@ -80,6 +80,22 @@ export const FeedPost = IDL.Record({
   'likesCount' : IDL.Nat,
   'promptAnswer' : IDL.Opt(IDL.Text),
 });
+export const StoryType = IDL.Variant({
+  'video' : IDL.Null,
+  'image' : IDL.Null,
+});
+export const Story = IDL.Record({
+  'id' : IDL.Text,
+  'storyType' : StoryType,
+  'userId' : IDL.Principal,
+  'createdAt' : Time,
+  'overlayText' : IDL.Opt(IDL.Text),
+  'mediaUrl' : IDL.Text,
+  'viewers' : IDL.Vec(IDL.Principal),
+  'youtubeVidId' : IDL.Opt(IDL.Text),
+  'youtubeTtitle' : IDL.Opt(IDL.Text),
+  'location' : IDL.Opt(IDL.Text),
+});
 export const UserPhoto = IDL.Record({ 'url' : IDL.Text, 'caption' : IDL.Text });
 export const UserProfile = IDL.Record({
   'age' : IDL.Nat,
@@ -108,6 +124,24 @@ export const Report = IDL.Record({
   'details' : IDL.Text,
   'reportId' : IDL.Text,
   'reason' : IDL.Text,
+});
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
 });
 
 export const idlService = IDL.Service({
@@ -169,9 +203,16 @@ export const idlService = IDL.Service({
       [],
     ),
   'createPost' : IDL.Func([FeedPost, IDL.Text], [FeedPost], []),
+  'createStory' : IDL.Func([Story], [], []),
   'deleteChat' : IDL.Func([IDL.Text], [], []),
   'deleteMatch' : IDL.Func([IDL.Text], [], []),
+  'deleteStory' : IDL.Func([IDL.Text], [], []),
   'flagScreenshotAttempt' : IDL.Func([IDL.Text], [], []),
+  'getActiveStories' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(Story, IDL.Nat))],
+      ['query'],
+    ),
   'getBlockedUsers' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(IDL.Principal)],
@@ -184,11 +225,21 @@ export const idlService = IDL.Service({
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getChatThemes' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
+      ['query'],
+    ),
   'getComments' : IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
   'getLikes' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Principal)], ['query']),
   'getMatch' : IDL.Func([IDL.Text], [IDL.Opt(Match)], ['query']),
   'getMatches' : IDL.Func([], [IDL.Vec(Match)], ['query']),
   'getMessages' : IDL.Func([IDL.Text], [IDL.Vec(ChatMessage)], ['query']),
+  'getMessagesAfter' : IDL.Func(
+      [IDL.Text, Time],
+      [IDL.Vec(ChatMessage)],
+      ['query'],
+    ),
   'getNotifications' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(Notification)],
@@ -197,6 +248,11 @@ export const idlService = IDL.Service({
   'getPosts' : IDL.Func([], [IDL.Vec(PostData)], ['query']),
   'getPostsCreatedToday' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
   'getReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
+  'getStoryViewers' : IDL.Func(
+      [IDL.Text],
+      [IDL.Nat, IDL.Vec(IDL.Principal)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -207,13 +263,20 @@ export const idlService = IDL.Service({
   'likePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
   'markNotificationsRead' : IDL.Func([IDL.Principal], [], []),
   'markReportReviewed' : IDL.Func([IDL.Text], [], []),
+  'markStoryViewed' : IDL.Func([IDL.Text], [], []),
   'reportUser' : IDL.Func(
       [IDL.Text, IDL.Principal, IDL.Text, IDL.Text],
       [],
       [],
     ),
+  'requestEmailOTP' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
   'resetDailyLimits' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'saveChatTheme' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'setCoverPhoto' : IDL.Func([IDL.Nat], [], []),
   'setVerificationImage' : IDL.Func([IDL.Text], [], []),
   'toggleBlock' : IDL.Func(
@@ -226,12 +289,26 @@ export const idlService = IDL.Service({
       ],
       [],
     ),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
   'unlikePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
   'updatePostsCreatedToday' : IDL.Func([IDL.Principal], [], []),
   'updateUserPhotos' : IDL.Func([IDL.Vec(UserPhoto), IDL.Nat], [], []),
-    'getMessagesAfter' : IDL.Func([IDL.Text, IDL.Int], [IDL.Vec(ChatMessage)], ['query']),
-    'saveChatTheme' : IDL.Func([IDL.Text, IDL.Text], [], []),
-    'getChatThemes' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
+  'verifyEmailOTP' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [
+        IDL.Variant({
+          'ok' : IDL.Null,
+          'expired' : IDL.Null,
+          'invalid' : IDL.Null,
+          'tooManyAttempts' : IDL.Null,
+        }),
+      ],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
@@ -309,6 +386,19 @@ export const idlFactory = ({ IDL }) => {
     'likesCount' : IDL.Nat,
     'promptAnswer' : IDL.Opt(IDL.Text),
   });
+  const StoryType = IDL.Variant({ 'video' : IDL.Null, 'image' : IDL.Null });
+  const Story = IDL.Record({
+    'id' : IDL.Text,
+    'storyType' : StoryType,
+    'userId' : IDL.Principal,
+    'createdAt' : Time,
+    'overlayText' : IDL.Opt(IDL.Text),
+    'mediaUrl' : IDL.Text,
+    'viewers' : IDL.Vec(IDL.Principal),
+    'youtubeVidId' : IDL.Opt(IDL.Text),
+    'youtubeTtitle' : IDL.Opt(IDL.Text),
+    'location' : IDL.Opt(IDL.Text),
+  });
   const UserPhoto = IDL.Record({ 'url' : IDL.Text, 'caption' : IDL.Text });
   const UserProfile = IDL.Record({
     'age' : IDL.Nat,
@@ -337,6 +427,21 @@ export const idlFactory = ({ IDL }) => {
     'details' : IDL.Text,
     'reportId' : IDL.Text,
     'reason' : IDL.Text,
+  });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
   });
   
   return IDL.Service({
@@ -398,9 +503,16 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'createPost' : IDL.Func([FeedPost, IDL.Text], [FeedPost], []),
+    'createStory' : IDL.Func([Story], [], []),
     'deleteChat' : IDL.Func([IDL.Text], [], []),
     'deleteMatch' : IDL.Func([IDL.Text], [], []),
+    'deleteStory' : IDL.Func([IDL.Text], [], []),
     'flagScreenshotAttempt' : IDL.Func([IDL.Text], [], []),
+    'getActiveStories' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(Story, IDL.Nat))],
+        ['query'],
+      ),
     'getBlockedUsers' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(IDL.Principal)],
@@ -413,11 +525,21 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getChatThemes' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
+        ['query'],
+      ),
     'getComments' : IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
     'getLikes' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Principal)], ['query']),
     'getMatch' : IDL.Func([IDL.Text], [IDL.Opt(Match)], ['query']),
     'getMatches' : IDL.Func([], [IDL.Vec(Match)], ['query']),
     'getMessages' : IDL.Func([IDL.Text], [IDL.Vec(ChatMessage)], ['query']),
+    'getMessagesAfter' : IDL.Func(
+        [IDL.Text, Time],
+        [IDL.Vec(ChatMessage)],
+        ['query'],
+      ),
     'getNotifications' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(Notification)],
@@ -426,6 +548,11 @@ export const idlFactory = ({ IDL }) => {
     'getPosts' : IDL.Func([], [IDL.Vec(PostData)], ['query']),
     'getPostsCreatedToday' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
     'getReports' : IDL.Func([], [IDL.Vec(Report)], ['query']),
+    'getStoryViewers' : IDL.Func(
+        [IDL.Text],
+        [IDL.Nat, IDL.Vec(IDL.Principal)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -440,13 +567,20 @@ export const idlFactory = ({ IDL }) => {
     'likePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
     'markNotificationsRead' : IDL.Func([IDL.Principal], [], []),
     'markReportReviewed' : IDL.Func([IDL.Text], [], []),
+    'markStoryViewed' : IDL.Func([IDL.Text], [], []),
     'reportUser' : IDL.Func(
         [IDL.Text, IDL.Principal, IDL.Text, IDL.Text],
         [],
         [],
       ),
+    'requestEmailOTP' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
     'resetDailyLimits' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'saveChatTheme' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'setCoverPhoto' : IDL.Func([IDL.Nat], [], []),
     'setVerificationImage' : IDL.Func([IDL.Text], [], []),
     'toggleBlock' : IDL.Func(
@@ -459,12 +593,26 @@ export const idlFactory = ({ IDL }) => {
         ],
         [],
       ),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
     'unlikePost' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], []),
     'updatePostsCreatedToday' : IDL.Func([IDL.Principal], [], []),
     'updateUserPhotos' : IDL.Func([IDL.Vec(UserPhoto), IDL.Nat], [], []),
-    'getMessagesAfter' : IDL.Func([IDL.Text, IDL.Int], [IDL.Vec(ChatMessage)], ['query']),
-    'saveChatTheme' : IDL.Func([IDL.Text, IDL.Text], [], []),
-    'getChatThemes' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
+    'verifyEmailOTP' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [
+          IDL.Variant({
+            'ok' : IDL.Null,
+            'expired' : IDL.Null,
+            'invalid' : IDL.Null,
+            'tooManyAttempts' : IDL.Null,
+          }),
+        ],
+        [],
+      ),
   });
 };
 

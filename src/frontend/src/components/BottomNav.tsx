@@ -1,7 +1,8 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Flame, Heart, MessageCircle, User } from "lucide-react";
+import { Flame, Heart, Home, MessageCircle, User } from "lucide-react";
 
 const tabs = [
+  { path: "/home-feed", icon: Home, label: "Home" },
   { path: "/app", icon: Flame, label: "Swipe" },
   { path: "/matches", icon: Heart, label: "Likes" },
   { path: "/chat/m1", icon: MessageCircle, label: "Chat" },
@@ -15,20 +16,24 @@ export function BottomNav() {
 
   return (
     <nav
-      className="glass-dark border-t border-border/50 px-2 py-2 flex justify-around"
+      className="glass-dark border-t border-border/50 px-1 py-2 flex justify-around"
       data-ocid="bottom.nav"
     >
       {tabs.map(({ path, icon: Icon, label }) => {
         const isActive =
           (path === "/app" && current === "/app") ||
+          (path === "/home-feed" && current === "/home-feed") ||
           (path === "/chat/m1" && current.startsWith("/chat")) ||
-          (path !== "/app" && path !== "/chat/m1" && current === path);
+          (path !== "/app" &&
+            path !== "/chat/m1" &&
+            path !== "/home-feed" &&
+            current === path);
         return (
           <button
             type="button"
             key={path}
             onClick={() => navigate({ to: path })}
-            className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${
               isActive
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
