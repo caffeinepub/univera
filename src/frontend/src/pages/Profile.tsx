@@ -14,6 +14,7 @@ import {
   Rocket,
   Settings,
   Shield,
+  Sparkles,
   Star,
   Sun,
   X,
@@ -61,6 +62,31 @@ const GHOST_PROMPTS = [
   "My simple pleasure is...",
   "Dating me is like...",
   "Biggest green flag...",
+];
+
+const PROMPT_EMOJIS: Record<string, string> = {
+  "My simple pleasure is...": "☕",
+  "Dating me is like...": "💫",
+  "Biggest green flag...": "🌱",
+  "My love language is...": "💝",
+  "I'm looking for...": "🔍",
+  "Fun fact about me...": "🎲",
+  "My ideal weekend...": "🌅",
+  "Currently obsessed with...": "🔥",
+};
+
+const PROMPT_COLORS = [
+  { border: "#a855f7", glow: "rgba(168,85,247,0.3)" },
+  { border: "#ec4899", glow: "rgba(236,72,153,0.3)" },
+  { border: "#f97316", glow: "rgba(249,115,22,0.3)" },
+];
+
+const STORY_HIGHLIGHTS = [
+  { emoji: "✨", label: "Vibes" },
+  { emoji: "🏫", label: "Campus" },
+  { emoji: "✈️", label: "Travel" },
+  { emoji: "🎨", label: "Hobby" },
+  { emoji: "🎵", label: "Music" },
 ];
 
 interface Photo {
@@ -122,7 +148,6 @@ export function Profile() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [uploadingLabel, setUploadingLabel] = useState("");
 
-  // Sync photos from user context when user changes
   useEffect(() => {
     if (user?.photos && user.photos.length > 0) {
       setPhotos(user.photos);
@@ -131,7 +156,6 @@ export function Profile() {
 
   if (!user) return null;
 
-  // ─── Profile Completion (spec formula) ──────────────────────────────────────
   let completionPct = 0;
   if (user.name?.trim()) completionPct += 10;
   if (user.photoUrl) completionPct += 15;
@@ -143,7 +167,6 @@ export function Profile() {
   if (user.isVerified) completionPct += 10;
   if (photos.length >= 3) completionPct += 5;
 
-  // Smart tip
   let _completionTip = "";
   if (!user.photoUrl)
     _completionTip = "Add a profile photo to get more matches!";
@@ -161,7 +184,7 @@ export function Profile() {
     completionPct >= 80
       ? "#22c55e"
       : completionPct >= 50
-        ? "#7C3AED"
+        ? "#a855f7"
         : "#f59e0b";
 
   const toggleInterest = (tag: string) => {
@@ -179,8 +202,6 @@ export function Profile() {
     await handleSaveCaptions();
   };
 
-  // ─── Photo management (blob-storage wired) ─────────────────────────────────
-
   const handleMainPhotoChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -191,7 +212,6 @@ export function Profile() {
       const url = await uploadFile(file);
       setUser({ ...user, photoUrl: url });
     } catch {
-      // Fallback to local URL
       const url = URL.createObjectURL(file);
       setUser({ ...user, photoUrl: url });
     }
@@ -315,11 +335,9 @@ export function Profile() {
   const nextRewardType: "likes" | "superlike" =
     adsWatched % 2 === 1 ? "superlike" : "likes";
 
-  // Cover photo for hero
   const coverPhoto =
     photos[user.coverPhotoIndex ?? 0]?.url ?? user.photoUrl ?? null;
 
-  // Actionable completion tips
   const completionTips: { icon: string; text: string }[] = [];
   if (!user.photoUrl && photos.length === 0)
     completionTips.push({ icon: "📸", text: "Add photos to get more matches" });
@@ -344,121 +362,271 @@ export function Profile() {
         : "#6b7280";
 
   return (
-    <div className="app-shell bg-app flex flex-col h-[100dvh]">
+    <div
+      className="app-shell flex flex-col h-[100dvh]"
+      style={{ background: "#0a0a0f" }}
+    >
       <div className="flex-1 overflow-y-auto">
-        {/* ─ HERO HEADER ──────────────────────────────────────────────────── */}
-        <div className="relative w-full" style={{ height: 280 }}>
-          {/* Cover photo */}
-          {coverPhoto ? (
-            <ImgWithFallback
-              src={coverPhoto}
-              alt={user.name}
-              className="w-full h-full object-cover"
-              fallbackAvatar={avatarString}
-            />
-          ) : (
-            <div
-              className="w-full h-full flex items-center justify-center text-7xl"
-              style={{ background: gradientStyle }}
-            >
-              {avatarString || user.name.charAt(0)}
-            </div>
-          )}
+        {/* ══════════════════════════════════════════════════
+            1. IMMERSIVE HEADER
+        ══════════════════════════════════════════════════ */}
+        <div
+          className="relative w-full overflow-hidden"
+          style={{ minHeight: 320 }}
+        >
+          {/* Background cover */}
+          <div className="absolute inset-0">
+            {coverPhoto ? (
+              <ImgWithFallback
+                src={coverPhoto}
+                alt={user.name}
+                className="w-full h-full object-cover"
+                fallbackAvatar={avatarString}
+                style={{ filter: "brightness(0.55) saturate(1.2)" }}
+              />
+            ) : (
+              <div
+                className="w-full h-full"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #1a0533 0%, #2d0a3e 40%, #1a0020 100%)",
+                }}
+              />
+            )}
+          </div>
 
-          {/* Gradient overlay */}
+          {/* Animated neon gradient overlay */}
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.3) 45%, transparent 100%)",
+                "linear-gradient(to bottom, rgba(88,28,135,0.5) 0%, rgba(157,23,77,0.35) 40%, rgba(154,52,18,0.2) 70%, rgba(10,10,15,1) 100%)",
             }}
           />
 
-          {/* Top-right controls */}
-          <div className="absolute top-4 right-4 flex items-center gap-2">
-            <button
+          {/* Floating orbs */}
+          <motion.div
+            className="absolute top-8 left-8 w-24 h-24 rounded-full pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(168,85,247,0.35) 0%, transparent 70%)",
+              filter: "blur(12px)",
+            }}
+            animate={{
+              x: [0, 12, -6, 0],
+              y: [0, -8, 10, 0],
+              scale: [1, 1.1, 0.95, 1],
+            }}
+            transition={{
+              duration: 6,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+            }}
+          />
+          <motion.div
+            className="absolute top-16 right-12 w-16 h-16 rounded-full pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(236,72,153,0.4) 0%, transparent 70%)",
+              filter: "blur(10px)",
+            }}
+            animate={{
+              x: [0, -10, 6, 0],
+              y: [0, 8, -12, 0],
+              scale: [1, 0.9, 1.15, 1],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+              delay: 1,
+            }}
+          />
+          <motion.div
+            className="absolute bottom-20 right-6 w-12 h-12 rounded-full pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(249,115,22,0.35) 0%, transparent 70%)",
+              filter: "blur(8px)",
+            }}
+            animate={{ x: [0, 8, -4, 0], y: [0, -6, 8, 0] }}
+            transition={{
+              duration: 7,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+              delay: 2,
+            }}
+          />
+
+          {/* Top controls */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={toggleTheme}
-              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                backdropFilter: "blur(12px)",
+              }}
               data-ocid="profile.toggle"
             >
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setEditing((prev) => !prev)}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-90"
+              className="px-4 py-2 rounded-full text-xs font-bold text-white flex items-center gap-1.5"
               style={{
                 background: editing
-                  ? "linear-gradient(135deg,#7C3AED,#EC4899)"
-                  : "rgba(0,0,0,0.45)",
-                backdropFilter: "blur(4px)",
+                  ? "rgba(239,68,68,0.7)"
+                  : "rgba(168,85,247,0.25)",
+                backdropFilter: "blur(12px)",
+                border: editing
+                  ? "1px solid rgba(239,68,68,0.5)"
+                  : "1px solid rgba(168,85,247,0.5)",
+                boxShadow: editing
+                  ? "0 0 16px rgba(239,68,68,0.2)"
+                  : "0 0 16px rgba(168,85,247,0.25)",
               }}
               data-ocid="profile.edit_button"
             >
-              {editing ? <X size={16} /> : <Edit2 size={16} />}
-            </button>
+              {editing ? (
+                <>
+                  <X size={13} /> Cancel
+                </>
+              ) : (
+                <>
+                  <Edit2 size={13} /> Edit
+                </>
+              )}
+            </motion.button>
           </div>
 
-          {/* Bottom info */}
-          <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h1 className="font-display text-2xl font-black text-white leading-tight">
-                    {user.name}
-                  </h1>
-                  {user.isVerified && (
-                    <CheckCircle
-                      size={18}
-                      className="text-blue-400 flex-shrink-0"
-                      fill="#3b82f6"
-                      color="white"
-                    />
-                  )}
-                  {/* Online dot */}
-                  <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ background: onlineColor }}
-                  />
-                </div>
-                <p className="text-white/80 text-sm">
-                  {user.year && `${user.year}`}
-                  {user.year && user.major && " · "}
-                  {user.major && user.major}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  {user.isPro && (
-                    <span
-                      className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                      style={{
-                        background: "linear-gradient(135deg,#7C3AED,#EC4899)",
-                      }}
-                    >
-                      ⚡ PRO
-                    </span>
-                  )}
-                  <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-white/80"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
-                    {user.mode === "dating" ? "💘 Dating" : "🤝 BFF"}
-                  </span>
-                </div>
-              </div>
-              {/* Camera upload for main photo */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-transform hover:scale-110"
-                style={{ background: gradientStyle }}
-                data-ocid="profile.upload_button"
+          {/* Profile photo + info centered */}
+          <div className="relative z-10 flex flex-col items-center pt-14 pb-6 px-4">
+            {/* Avatar / profile photo with neon ring */}
+            <div className="relative mb-3">
+              <motion.div
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => editing && fileInputRef.current?.click()}
+                className="relative w-28 h-28 rounded-full overflow-hidden cursor-pointer"
+                style={{
+                  boxShadow:
+                    "0 0 0 3px #a855f7, 0 0 30px rgba(168,85,247,0.6), 0 0 60px rgba(168,85,247,0.25)",
+                }}
               >
-                <Camera size={16} />
-              </button>
+                {coverPhoto ? (
+                  <ImgWithFallback
+                    src={coverPhoto}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                    fallbackAvatar={avatarString}
+                  />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center text-4xl"
+                    style={{
+                      background: "linear-gradient(135deg, #2d1b69, #4a1942)",
+                    }}
+                  >
+                    {avatarString || user.name.charAt(0)}
+                  </div>
+                )}
+                {editing && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ background: "rgba(0,0,0,0.5)" }}
+                  >
+                    <Camera size={22} className="text-white" />
+                  </div>
+                )}
+              </motion.div>
+              {/* Online status ring */}
+              <div
+                className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
+                style={{
+                  background: onlineColor,
+                  borderColor: "#0a0a0f",
+                  boxShadow: `0 0 8px ${onlineColor}`,
+                }}
+              />
             </div>
+
+            {/* Name + verified */}
+            <div className="flex items-center gap-2 mb-1">
+              <h1
+                className="text-2xl font-black text-white"
+                style={{
+                  fontFamily: "'Bricolage Grotesque', sans-serif",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {user.name}
+                {user.age ? `, ${user.age}` : ""}
+              </h1>
+              {user.isVerified && (
+                <CheckCircle
+                  size={18}
+                  className="text-blue-400 flex-shrink-0"
+                  fill="#3b82f6"
+                  color="white"
+                />
+              )}
+            </div>
+
+            {/* Course / year */}
+            {(user.year || user.major) && (
+              <p className="text-white/60 text-sm mb-2">
+                {user.year && user.year}
+                {user.year && user.major && " · "}
+                {user.major && user.major}
+              </p>
+            )}
+
+            {/* Online status pill */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+              style={{
+                background: "rgba(255,255,255,0.07)",
+                backdropFilter: "blur(8px)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: onlineColor,
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: onlineColor,
+                  boxShadow: `0 0 6px ${onlineColor}`,
+                }}
+              />
+              {currentUserOnlineStatus === "online"
+                ? "Online now"
+                : currentUserOnlineStatus === "away"
+                  ? "Away"
+                  : "Offline"}
+            </div>
+
+            {/* Pro badge */}
+            {user.isPro && (
+              <div
+                className="mt-2 px-3 py-1 rounded-full text-xs font-bold text-white"
+                style={{
+                  background: "linear-gradient(135deg,#7C3AED,#EC4899)",
+                  boxShadow: "0 0 12px rgba(168,85,247,0.4)",
+                }}
+              >
+                ⚡ UNIVÈRA Pro
+              </div>
+            )}
           </div>
 
+          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -469,46 +637,821 @@ export function Profile() {
           />
         </div>
 
-        {/* Edit Profile button - full-width below hero */}
-        <div className="px-4 -mt-0 mb-0">
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setEditing((prev) => !prev)}
-            className="w-full py-3 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg"
-            style={{
-              background: editing ? "rgba(239,68,68,0.85)" : gradientStyle,
-            }}
-            data-ocid="profile.primary_button"
-          >
-            {editing ? (
-              <>
-                <X size={15} /> Cancel Editing
-              </>
-            ) : (
-              <>
-                <Edit2 size={15} /> Edit Profile
-              </>
-            )}
-          </motion.button>
+        {/* ══════════════════════════════════════════════════
+            2. STORY HIGHLIGHTS
+        ══════════════════════════════════════════════════ */}
+        <div className="px-4 mt-4">
+          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+            {/* Add story CTA */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center gap-1.5 flex-shrink-0"
+              data-ocid="profile.upload_button"
+            >
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center"
+                style={{
+                  background: "rgba(168,85,247,0.12)",
+                  border: "2px dashed rgba(168,85,247,0.5)",
+                  boxShadow: "0 0 12px rgba(168,85,247,0.15)",
+                }}
+              >
+                <Plus size={22} style={{ color: "#a855f7" }} />
+              </div>
+              <span
+                className="text-[10px] font-semibold"
+                style={{ color: "rgba(255,255,255,0.5)" }}
+              >
+                Add Story
+              </span>
+            </motion.button>
+
+            {/* Highlight circles */}
+            {STORY_HIGHLIGHTS.map((h, i) => (
+              <motion.button
+                key={h.label}
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.06 }}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0"
+                data-ocid={`profile.item.${i + 1}`}
+              >
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-2xl"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    backdropFilter: "blur(8px)",
+                    border: "2px solid transparent",
+                    backgroundClip: "padding-box",
+                    boxShadow:
+                      i % 3 === 0
+                        ? "0 0 0 2px #a855f7, 0 0 12px rgba(168,85,247,0.3)"
+                        : i % 3 === 1
+                          ? "0 0 0 2px #ec4899, 0 0 12px rgba(236,72,153,0.3)"
+                          : "0 0 0 2px #f97316, 0 0 12px rgba(249,115,22,0.3)",
+                  }}
+                >
+                  {h.emoji}
+                </div>
+                <span className="text-[10px] font-semibold text-white/50">
+                  {h.label}
+                </span>
+              </motion.button>
+            ))}
+          </div>
         </div>
 
-        {/* ─ PROFILE COMPLETION ────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════
+            3. ANIMATED FLOATING STATS PILLS
+        ══════════════════════════════════════════════════ */}
+        <div className="px-4 mt-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              {
+                icon: "✨",
+                label: `${completionPct}% Complete`,
+                glow: "rgba(168,85,247,0.35)",
+                border: "rgba(168,85,247,0.4)",
+                progress: true,
+                pct: completionPct,
+                color: completionColor,
+              },
+              {
+                icon: "📸",
+                label: `${photos.length} Photos`,
+                glow: "rgba(236,72,153,0.35)",
+                border: "rgba(236,72,153,0.4)",
+              },
+              {
+                icon: "💫",
+                label:
+                  planType === "free"
+                    ? "Free Plan"
+                    : planType === "monthly"
+                      ? "Pro Monthly"
+                      : "Pro Yearly",
+                glow: "rgba(249,115,22,0.35)",
+                border: "rgba(249,115,22,0.4)",
+              },
+              {
+                icon: "⭐",
+                label:
+                  superLikesRemaining === 999
+                    ? "∞ Super Likes"
+                    : `${superLikesRemaining} Super Likes`,
+                glow: "rgba(168,85,247,0.35)",
+                border: "rgba(168,85,247,0.4)",
+              },
+            ].map((pill, i) => (
+              <motion.div
+                key={pill.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  backdropFilter: "blur(16px)",
+                  border: `1px solid ${pill.border}`,
+                  boxShadow: `0 0 16px ${pill.glow}, inset 0 0 8px rgba(255,255,255,0.02)`,
+                }}
+              >
+                <span className="text-sm">{pill.icon}</span>
+                <span className="text-xs font-bold text-white/90 whitespace-nowrap">
+                  {pill.label}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════
+            4. PROMPTS — PERSONALITY FIRST
+        ══════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="px-4 mt-6"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2
+              className="text-lg font-black"
+              style={{
+                background: "linear-gradient(135deg, #a855f7, #ec4899)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              My Vibe ✨
+            </h2>
+            {editing && promptCards.length < 5 && (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowAddPrompt(true)}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full text-white"
+                style={{
+                  background: gradientStyle,
+                  boxShadow: "0 0 12px rgba(168,85,247,0.35)",
+                }}
+              >
+                <Plus size={12} /> Add Prompt
+              </motion.button>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {/* Ghost prompts */}
+            {promptCards.length === 0 &&
+              !editing &&
+              GHOST_PROMPTS.map((gp, i) => (
+                <motion.button
+                  key={gp}
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  onClick={() => {
+                    setSelectedPrompt(gp);
+                    setShowAddPrompt(true);
+                    setEditing(true);
+                  }}
+                  className="w-full text-left px-4 py-4 rounded-2xl"
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: `1.5px dashed ${PROMPT_COLORS[i % 3].border}`,
+                    boxShadow: `0 0 16px ${PROMPT_COLORS[i % 3].glow}`,
+                  }}
+                >
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
+                    style={{ color: PROMPT_COLORS[i % 3].border }}
+                  >
+                    ✦ Tap to answer
+                  </p>
+                  <p className="text-sm text-white/50 italic">{gp}</p>
+                </motion.button>
+              ))}
+
+            {/* Filled prompt cards */}
+            {promptCards.map((card, idx) => (
+              <motion.div
+                // biome-ignore lint/suspicious/noArrayIndexKey: prompt cards are user-ordered
+                key={`prompt-${idx}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.07 }}
+                className="relative rounded-2xl p-4 overflow-hidden"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  backdropFilter: "blur(16px)",
+                  borderLeft: `3px solid ${PROMPT_COLORS[idx % 3].border}`,
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  boxShadow: `4px 0 0 0 ${PROMPT_COLORS[idx % 3].border}, 0 0 24px ${PROMPT_COLORS[idx % 3].glow}`,
+                }}
+              >
+                <p
+                  className="text-[10px] font-bold uppercase tracking-widest mb-2"
+                  style={{ color: PROMPT_COLORS[idx % 3].border }}
+                >
+                  {PROMPT_EMOJIS[card.prompt] ?? "💬"} {card.prompt}
+                </p>
+                <p className="text-white text-base font-semibold leading-snug">
+                  {card.answer}
+                </p>
+                {editing && (
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => removePromptCard(idx)}
+                    className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    <X size={11} className="text-white/60" />
+                  </motion.button>
+                )}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Add prompt form */}
+          <AnimatePresence>
+            {showAddPrompt && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 overflow-hidden"
+              >
+                <div
+                  className="rounded-2xl p-4 space-y-3"
+                  style={{
+                    background: "rgba(168,85,247,0.06)",
+                    border: "1px solid rgba(168,85,247,0.2)",
+                  }}
+                >
+                  <p className="text-sm font-bold text-white">
+                    Choose a prompt
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {AVAILABLE_PROMPTS.filter(
+                      (p) => !promptCards.some((c) => c.prompt === p),
+                    ).map((p) => (
+                      <motion.button
+                        key={p}
+                        type="button"
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setSelectedPrompt(p)}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                        style={{
+                          background:
+                            selectedPrompt === p
+                              ? gradientStyle
+                              : "rgba(168,85,247,0.08)",
+                          border:
+                            selectedPrompt === p
+                              ? "none"
+                              : "1px solid rgba(168,85,247,0.25)",
+                          color:
+                            selectedPrompt === p
+                              ? "white"
+                              : "rgba(255,255,255,0.6)",
+                          boxShadow:
+                            selectedPrompt === p
+                              ? "0 0 12px rgba(168,85,247,0.4)"
+                              : "none",
+                        }}
+                      >
+                        {p}
+                      </motion.button>
+                    ))}
+                  </div>
+                  {selectedPrompt && (
+                    <textarea
+                      value={promptAnswer}
+                      onChange={(e) => setPromptAnswer(e.target.value)}
+                      placeholder="Your answer..."
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 resize-none"
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(168,85,247,0.3)",
+                      }}
+                      data-ocid="profile.textarea"
+                    />
+                  )}
+                  <div className="flex gap-2">
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={addPromptCard}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
+                      style={{
+                        background: gradientStyle,
+                        boxShadow: "0 0 12px rgba(168,85,247,0.3)",
+                      }}
+                    >
+                      Add ✦
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setShowAddPrompt(false)}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white/60"
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      Cancel
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* ══════════════════════════════════════════════════
+            5. ABOUT + INTERESTS
+        ══════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.13 }}
+          className="px-4 mt-5"
+        >
+          <h2
+            className="text-lg font-black mb-3"
+            style={{
+              background: "linear-gradient(135deg, #ec4899, #f97316)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            About Me 🌸
+          </h2>
+
+          {/* Bio */}
+          <div
+            className="rounded-2xl p-4 mb-3"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              backdropFilter: "blur(16px)",
+            }}
+          >
+            {editing ? (
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Write something about yourself..."
+                rows={3}
+                className="w-full px-3 py-2 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 resize-none"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(236,72,153,0.3)",
+                }}
+                data-ocid="profile.textarea"
+              />
+            ) : (
+              <p className="text-white/80 text-sm leading-relaxed">
+                {bio || (
+                  <span className="text-white/30 italic">
+                    Tap Edit to add a bio...
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+
+          {/* Interests */}
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              backdropFilter: "blur(16px)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-white/70">Interests</span>
+              {editing && (
+                <span className="text-xs text-white/40">
+                  {interests.length}/6
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(editing ? ALL_INTERESTS : interests).map((tag) => (
+                <motion.button
+                  type="button"
+                  key={tag}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => editing && toggleInterest(tag)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: interests.includes(tag)
+                      ? "rgba(168,85,247,0.2)"
+                      : "rgba(255,255,255,0.04)",
+                    border: interests.includes(tag)
+                      ? "1px solid rgba(168,85,247,0.6)"
+                      : "1px solid rgba(255,255,255,0.08)",
+                    color: interests.includes(tag)
+                      ? "#d8b4fe"
+                      : "rgba(255,255,255,0.4)",
+                    boxShadow: interests.includes(tag)
+                      ? "0 0 12px rgba(168,85,247,0.3)"
+                      : "none",
+                    cursor: editing ? "pointer" : "default",
+                  }}
+                  data-ocid={`profile.item.${ALL_INTERESTS.indexOf(tag) + 1}`}
+                >
+                  {tag}
+                </motion.button>
+              ))}
+              {!editing && interests.length === 0 && (
+                <span className="text-xs text-white/30 italic">
+                  No interests added yet
+                </span>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ══════════════════════════════════════════════════
+            6. PHOTOS GRID
+        ══════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.16 }}
+          className="px-4 mt-5"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2
+              className="text-lg font-black"
+              style={{
+                background: "linear-gradient(135deg, #a855f7, #f97316)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Photos 📸
+            </h2>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                style={{
+                  background: "rgba(168,85,247,0.12)",
+                  border: "1px solid rgba(168,85,247,0.3)",
+                  color: "#c084fc",
+                }}
+              >
+                {photos.length}/6
+              </span>
+              {editing && photos.length < 6 && (
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => addPhotoInputRef.current?.click()}
+                  disabled={photoUploading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+                  style={{
+                    background: gradientStyle,
+                    boxShadow: "0 0 10px rgba(168,85,247,0.3)",
+                  }}
+                  data-ocid="profile.upload_button"
+                >
+                  {photoUploading && uploadingLabel === "Uploading photo…" ? (
+                    <Loader2 size={11} className="animate-spin" />
+                  ) : (
+                    <Plus size={11} />
+                  )}
+                  Add
+                </motion.button>
+              )}
+            </div>
+          </div>
+
+          {/* Upload progress */}
+          {photoUploading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mb-3 px-3 py-2 rounded-xl flex items-center gap-2"
+              style={{
+                background: "rgba(168,85,247,0.08)",
+                border: "1px solid rgba(168,85,247,0.25)",
+              }}
+              data-ocid="profile.loading_state"
+            >
+              <Loader2
+                size={13}
+                className="animate-spin"
+                style={{ color: "#a855f7" }}
+              />
+              <span
+                className="text-xs font-medium"
+                style={{ color: "#a855f7" }}
+              >
+                {uploadingLabel}
+              </span>
+            </motion.div>
+          )}
+
+          {/* 2x3 grid */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {Array.from({ length: 6 }).map((_, i) => {
+              const photo = photos[i];
+              const isCover = (user.coverPhotoIndex ?? 0) === i;
+
+              if (photo) {
+                return (
+                  <motion.div
+                    key={photo.url || `photo-slot-${i}`}
+                    initial={{ opacity: 0, scale: 0.92 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="relative flex flex-col gap-1.5 group"
+                    data-ocid={`profile.item.${i + 1}`}
+                  >
+                    <div
+                      className="relative aspect-[3/4] rounded-2xl overflow-hidden"
+                      style={{
+                        boxShadow: isCover
+                          ? "0 0 0 2px #a855f7, 0 0 16px rgba(168,85,247,0.35)"
+                          : "none",
+                      }}
+                    >
+                      <ImgWithFallback
+                        src={photo.url}
+                        alt="Profile photo"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fallbackAvatar={avatarString}
+                      />
+                      {/* Hover overlay */}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-2"
+                        style={{
+                          background:
+                            "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)",
+                        }}
+                      >
+                        {photo.caption && (
+                          <p className="text-white text-[10px] font-medium leading-tight mb-1 line-clamp-2">
+                            {photo.caption}
+                          </p>
+                        )}
+                      </div>
+
+                      {isCover && (
+                        <div
+                          className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                          style={{ background: "rgba(168,85,247,0.85)" }}
+                        >
+                          Cover
+                        </div>
+                      )}
+
+                      {editing && (
+                        <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+                          {photos.length > 3 && (
+                            <motion.button
+                              type="button"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleDeletePhoto(i)}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                              style={{ background: "rgba(0,0,0,0.65)" }}
+                              data-ocid={`profile.delete_button.${i + 1}`}
+                            >
+                              <X size={11} />
+                            </motion.button>
+                          )}
+                          <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                              setReplaceSlot(i);
+                              replaceInputRef.current?.click();
+                            }}
+                            disabled={photoUploading}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                            style={{ background: "rgba(0,0,0,0.65)" }}
+                            data-ocid={`profile.edit_button.${i + 1}`}
+                          >
+                            <RefreshCw size={11} />
+                          </motion.button>
+                        </div>
+                      )}
+
+                      {editing && !isCover && (
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => handleSetCover(i)}
+                          className="absolute bottom-2 left-2 right-2 py-1 rounded-lg text-[10px] font-bold text-white"
+                          style={{
+                            background: "rgba(0,0,0,0.6)",
+                            backdropFilter: "blur(4px)",
+                          }}
+                          data-ocid={`profile.save_button.${i + 1}`}
+                        >
+                          ⭐ Set as Cover
+                        </motion.button>
+                      )}
+                    </div>
+
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={photo.caption}
+                        onChange={(e) => handleCaptionChange(i, e.target.value)}
+                        placeholder="Add a caption..."
+                        maxLength={60}
+                        className="w-full px-2 py-1 rounded-lg text-xs text-white placeholder:text-white/25 focus:outline-none focus:ring-1"
+                        style={{
+                          background: "rgba(255,255,255,0.05)",
+                          border: "1px solid rgba(168,85,247,0.25)",
+                        }}
+                        data-ocid="profile.input"
+                      />
+                    ) : (
+                      photo.caption && (
+                        <span
+                          className="px-2 py-1 rounded-lg text-[10px] font-medium text-white/70 truncate"
+                          style={{ background: "rgba(255,255,255,0.04)" }}
+                        >
+                          {photo.caption}
+                        </span>
+                      )
+                    )}
+                  </motion.div>
+                );
+              }
+
+              // Empty slot
+              return (
+                <motion.button
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length 6-slot grid
+                  key={`empty-slot-${i}`}
+                  type="button"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  whileHover={editing ? { scale: 1.03 } : {}}
+                  whileTap={editing ? { scale: 0.97 } : {}}
+                  onClick={() =>
+                    editing ? addPhotoInputRef.current?.click() : undefined
+                  }
+                  className="aspect-[3/4] rounded-2xl flex flex-col items-center justify-center gap-2"
+                  style={{
+                    background: "rgba(255,255,255,0.015)",
+                    border: "1.5px dashed rgba(168,85,247,0.25)",
+                    cursor: editing ? "pointer" : "default",
+                    boxShadow: editing
+                      ? "0 0 12px rgba(168,85,247,0.1)"
+                      : "none",
+                  }}
+                  disabled={!editing}
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.08, 1] }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Number.POSITIVE_INFINITY,
+                    }}
+                  >
+                    <Camera
+                      size={22}
+                      style={{
+                        color: editing
+                          ? "rgba(168,85,247,0.6)"
+                          : "rgba(255,255,255,0.12)",
+                      }}
+                    />
+                  </motion.div>
+                  <span
+                    className="text-[10px] font-semibold"
+                    style={{
+                      color: editing
+                        ? "rgba(168,85,247,0.7)"
+                        : "rgba(255,255,255,0.15)",
+                    }}
+                  >
+                    {editing ? "Add Photo" : "Empty"}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+
+          {/* Hidden file inputs */}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAddPhoto}
+          />
+          <input
+            ref={addPhotoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAddPhoto}
+          />
+          <input
+            ref={replaceInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleReplacePhoto}
+          />
+        </motion.div>
+
+        {/* ── Avatar builder ─ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="px-4 mt-4"
+        >
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(168,85,247,0.06), rgba(236,72,153,0.06))",
+              border: "1px solid rgba(168,85,247,0.2)",
+            }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-4xl select-none">{avatarString}</div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white">Your Avatar</p>
+                <p className="text-xs text-white/40">
+                  Used as fallback when no photo is set
+                </p>
+              </div>
+              {editing && (
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowAvatarBuilder((p) => !p)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                  style={{ background: gradientStyle }}
+                  data-ocid="profile.avatar.button"
+                >
+                  {showAvatarBuilder ? "Done" : "Customize"}
+                </motion.button>
+              )}
+            </div>
+            {showAvatarBuilder && editing && avatarData && (
+              <div className="mt-3">
+                <AvatarBuilder value={avatarData} onChange={setAvatarData} />
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* ── Profile completion ─ */}
         {completionPct < 100 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="px-4 mt-3"
+            className="px-4 mt-4"
           >
             <div
               className="rounded-2xl px-4 py-3"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
               }}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-foreground">
+                <span className="text-xs font-bold text-white/60">
                   Profile Strength
                 </span>
                 <motion.span
@@ -522,27 +1465,24 @@ export function Profile() {
                 </motion.span>
               </div>
               <div
-                className="w-full h-1.5 rounded-full mb-3"
-                style={{ background: "rgba(139,92,246,0.12)" }}
+                className="w-full h-1.5 rounded-full"
+                style={{ background: "rgba(168,85,247,0.1)" }}
               >
                 <motion.div
                   className="h-1.5 rounded-full"
                   style={{
-                    background: "linear-gradient(90deg, #7C3AED, #EC4899)",
+                    background: "linear-gradient(90deg, #a855f7, #ec4899)",
                   }}
                   initial={{ width: 0 }}
                   animate={{ width: `${completionPct}%` }}
                   transition={{ duration: 0.9, ease: "easeOut" }}
                 />
               </div>
-              {/* Actionable tips */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 mt-3">
                 {completionTips.slice(0, 3).map((tip) => (
                   <div key={tip.text} className="flex items-center gap-2">
                     <span className="text-sm">{tip.icon}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {tip.text}
-                    </span>
+                    <span className="text-xs text-white/40">{tip.text}</span>
                   </div>
                 ))}
               </div>
@@ -550,61 +1490,83 @@ export function Profile() {
           </motion.div>
         )}
 
-        {/* ─ STATS ────────────────────────────────────────────────────────── */}
+        {/* ── Save button ─ */}
+        <AnimatePresence>
+          {editing && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="px-4 mt-4"
+            >
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={saveProfile}
+                className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2"
+                style={{
+                  background: gradientStyle,
+                  boxShadow: "0 0 24px rgba(168,85,247,0.35)",
+                }}
+                data-ocid="profile.save_button"
+              >
+                <Sparkles size={15} /> Save Changes
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Preview button ─ */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
           className="px-4 mt-3"
         >
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Matches", value: "12" },
-              { label: "Likes", value: "47" },
-              { label: "Views", value: "134" },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="rounded-2xl p-3 text-center"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-              >
-                <div className="font-display text-xl font-black text-gradient-violet">
-                  {value}
-                </div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowPreviewModal(true)}
+            className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 text-white"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+            data-ocid="profile.secondary_button"
+          >
+            <Eye size={15} /> Preview Profile
+          </motion.button>
         </motion.div>
 
-        {/* ─ PLAN + BOOST ─────────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════
+            7. MONETIZATION (last)
+        ══════════════════════════════════════════════════ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="px-4 mt-3"
+          transition={{ delay: 0.22 }}
+          className="px-4 mt-5 space-y-3"
         >
+          {/* Plan + super likes */}
           <div
             className="rounded-2xl p-4"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
             }}
             data-ocid="profile.card"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-foreground">
-                Your Plan
-              </span>
+              <span className="text-sm font-bold text-white">Your Plan</span>
               {planType === "free" ? (
                 <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-full text-white/70"
-                  style={{ background: "rgba(255,255,255,0.1)" }}
+                  className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    color: "rgba(255,255,255,0.5)",
+                  }}
                 >
                   FREE
                 </span>
@@ -613,6 +1575,7 @@ export function Profile() {
                   className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#EC4899)",
+                    boxShadow: "0 0 12px rgba(168,85,247,0.3)",
                   }}
                 >
                   PRO MONTHLY
@@ -622,68 +1585,66 @@ export function Profile() {
                   className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
                   style={{
                     background: "linear-gradient(135deg,#f59e0b,#f97316)",
+                    boxShadow: "0 0 12px rgba(249,115,22,0.3)",
                   }}
                 >
                   PRO YEARLY ⭐
                 </span>
               )}
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-white/40">
               <span>⭐ Super Likes remaining</span>
-              <span className="font-bold text-foreground">
+              <span className="font-bold text-white">
                 {superLikesRemaining === 999
                   ? "Unlimited"
                   : superLikesRemaining}
               </span>
             </div>
             {nextSuperLikeResetIn > 0 && planType !== "yearly" && (
-              <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+              <div className="text-[10px] text-white/30 mt-0.5">
                 Resets in {Math.floor(nextSuperLikeResetIn / 3_600_000)}h{" "}
                 {Math.floor((nextSuperLikeResetIn % 3_600_000) / 60_000)}m
               </div>
             )}
             {planType === "free" && (
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setShowUpgradeModal(true);
                   setUpgradeReason("Unlock Pro features");
                 }}
-                className="w-full py-2 rounded-xl text-xs font-bold text-white mt-3"
-                style={{ background: gradientStyle }}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-white mt-3"
+                style={{
+                  background: gradientStyle,
+                  boxShadow: "0 0 16px rgba(168,85,247,0.3)",
+                }}
                 data-ocid="profile.primary_button"
               >
                 ✨ Upgrade to Pro
-              </button>
+              </motion.button>
             )}
           </div>
-          <div className="mt-2">
+
+          <div>
             <BoostButton />
           </div>
-        </motion.div>
 
-        {/* ─ EARN MORE ───────────────────────────────────────────────────── */}
-        {!user.isPro && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="px-4 mt-3"
-          >
+          {/* Earn more (free users) */}
+          {!user.isPro && (
             <div
               className="rounded-2xl p-4"
               style={{
                 background:
-                  "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.12))",
-                border: "1px solid rgba(245,158,11,0.25)",
+                  "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(249,115,22,0.08))",
+                border: "1px solid rgba(245,158,11,0.2)",
               }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="font-bold text-sm text-foreground">
-                    🌟 Earn More
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <h3 className="font-bold text-sm text-white">🌟 Earn More</h3>
+                  <p className="text-xs text-white/40 mt-0.5">
                     Watch ads to earn free likes &amp; super likes
                   </p>
                 </div>
@@ -694,15 +1655,15 @@ export function Profile() {
                   >
                     {adsWatched}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    ads watched
-                  </div>
+                  <div className="text-xs text-white/40">ads watched</div>
                 </div>
               </div>
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setShowRewardedAd(true)}
-                className="w-full py-3 rounded-xl font-extrabold text-sm text-white flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-transform"
+                className="w-full py-3 rounded-xl font-extrabold text-sm text-white flex items-center justify-center gap-2"
                 style={{
                   background: "linear-gradient(135deg, #F59E0B, #F97316)",
                   boxShadow: "0 4px 16px rgba(245,158,11,0.3)",
@@ -713,716 +1674,143 @@ export function Profile() {
                 {nextRewardType === "likes"
                   ? "Watch Ad — Earn 2 Likes"
                   : "Watch Ad — Earn 1 Super Like"}
-              </button>
+              </motion.button>
             </div>
-          </motion.div>
-        )}
+          )}
 
-        {!user.isPro && (
-          <div className="px-4 mt-3">
-            <AdBanner />
-          </div>
-        )}
-
-        {/* ─ MY PHOTOS ──────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
-          className="px-4 mt-3"
-        >
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-sm text-foreground">
-                My Photos{" "}
-                <span className="text-xs text-muted-foreground font-normal">
-                  {photos.length}/6
-                </span>
-              </h3>
-              {editing && photos.length < 6 && (
-                <button
-                  type="button"
-                  onClick={() => addPhotoInputRef.current?.click()}
-                  disabled={photoUploading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-                  style={{ background: gradientStyle }}
-                  data-ocid="profile.upload_button"
-                >
-                  {photoUploading && uploadingLabel === "Uploading photo…" ? (
-                    <Loader2 size={11} className="animate-spin" />
-                  ) : (
-                    <Plus size={11} />
-                  )}
-                  Add
-                </button>
-              )}
+          {!user.isPro && (
+            <div>
+              <AdBanner />
             </div>
+          )}
 
-            {/* Upload progress */}
-            {photoUploading && (
-              <div
-                className="mb-3 px-3 py-2 rounded-xl flex items-center gap-2"
-                style={{
-                  background: "rgba(139,92,246,0.08)",
-                  border: "1px solid rgba(139,92,246,0.2)",
-                }}
-                data-ocid="profile.loading_state"
-              >
-                <Loader2 size={13} className="animate-spin text-primary" />
-                <span className="text-xs font-medium text-primary">
-                  {uploadingLabel}
-                </span>
-              </div>
-            )}
-
-            {photos.length === 0 && !editing ? (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="w-full py-8 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
-                style={{
-                  background: "rgba(139,92,246,0.05)",
-                  border: "2px dashed rgba(139,92,246,0.3)",
-                }}
-                data-ocid="profile.upload_button"
-              >
-                <span className="text-2xl">📸</span>
-                <span className="text-sm font-bold text-foreground">
-                  Add Photos
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Photos get you 3x more matches
-                </span>
-              </button>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {/* Show up to 6 slots: filled + empty */}
-                {Array.from({ length: 6 }).map((_, i) => {
-                  const photo = photos[i];
-                  const isCover = (user.coverPhotoIndex ?? 0) === i;
-                  if (photo) {
-                    return (
-                      <motion.div
-                        key={photo.url || `photo-slot-${i}`}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.04 }}
-                        className="flex flex-col gap-1"
-                        data-ocid={`profile.item.${i + 1}`}
-                      >
-                        <div className="relative aspect-[3/4] rounded-2xl overflow-hidden">
-                          <ImgWithFallback
-                            src={photo.url}
-                            alt="Profile photo"
-                            className="w-full h-full object-cover"
-                            fallbackAvatar={avatarString}
-                          />
-                          <div
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                              background:
-                                "linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 55%)",
-                            }}
-                          />
-                          {isCover && (
-                            <div
-                              className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                              style={{ background: "rgba(124,58,237,0.85)" }}
-                            >
-                              Cover
-                            </div>
-                          )}
-                          {editing && (
-                            <div className="absolute top-2 right-2 flex flex-col gap-1.5">
-                              {photos.length > 3 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeletePhoto(i)}
-                                  className="w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
-                                  data-ocid={`profile.delete_button.${i + 1}`}
-                                >
-                                  <X size={11} />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setReplaceSlot(i);
-                                  replaceInputRef.current?.click();
-                                }}
-                                disabled={photoUploading}
-                                className="w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-blue-500/80 transition-colors disabled:opacity-50"
-                                data-ocid={`profile.edit_button.${i + 1}`}
-                              >
-                                <RefreshCw size={11} />
-                              </button>
-                            </div>
-                          )}
-                          {editing && !isCover && (
-                            <button
-                              type="button"
-                              onClick={() => handleSetCover(i)}
-                              className="absolute bottom-2 left-2 right-2 py-1 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                              style={{
-                                background: "rgba(0,0,0,0.55)",
-                                backdropFilter: "blur(4px)",
-                              }}
-                              data-ocid={`profile.save_button.${i + 1}`}
-                            >
-                              ⭐ Set as Cover
-                            </button>
-                          )}
-                        </div>
-                        {editing ? (
-                          <input
-                            type="text"
-                            value={photo.caption}
-                            onChange={(e) =>
-                              handleCaptionChange(i, e.target.value)
-                            }
-                            placeholder="Add a caption..."
-                            maxLength={60}
-                            className="w-full px-2 py-1 rounded-lg text-xs bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                            data-ocid="profile.input"
-                          />
-                        ) : (
-                          photo.caption && (
-                            <span className="px-2.5 py-1 rounded-lg text-xs font-medium glass-card text-foreground truncate">
-                              {photo.caption}
-                            </span>
-                          )
-                        )}
-                      </motion.div>
-                    );
-                  }
-                  // Empty slot
-                  return (
-                    <motion.button
-                      // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length 6-slot grid
-                      key={`empty-slot-${i}`}
-                      type="button"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.04 }}
-                      onClick={() =>
-                        editing ? addPhotoInputRef.current?.click() : undefined
-                      }
-                      className="aspect-[3/4] rounded-2xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      style={{
-                        background: "rgba(255,255,255,0.02)",
-                        border: "2px dashed rgba(255,255,255,0.1)",
-                        cursor: editing ? "pointer" : "default",
-                      }}
-                      disabled={!editing}
-                    >
-                      <Plus size={20} className="text-muted-foreground/40" />
-                      <span className="text-[10px] text-muted-foreground/40 font-medium">
-                        {editing ? "Add Photo" : "Empty"}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Hidden file inputs */}
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAddPhoto}
-            />
-            <input
-              ref={addPhotoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAddPhoto}
-            />
-            <input
-              ref={replaceInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleReplacePhoto}
-            />
-          </div>
-        </motion.div>
-
-        {/* ─ PROMPTS ────────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14 }}
-          className="px-4 mt-3"
-        >
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-sm text-foreground">Prompts</h3>
-              {editing && promptCards.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAddPrompt(true)}
-                  className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:scale-105"
-                  style={{ background: gradientStyle, color: "white" }}
-                >
-                  <Plus size={12} /> Add Prompt
-                </button>
-              )}
-            </div>
-
-            {/* Ghost prompts — shown when empty and not editing */}
-            {promptCards.length === 0 && !editing && (
-              <div className="space-y-2">
-                {GHOST_PROMPTS.map((gp) => (
-                  <button
-                    key={gp}
-                    type="button"
-                    onClick={() => {
-                      setSelectedPrompt(gp);
-                      setShowAddPrompt(true);
-                      setEditing(true);
-                    }}
-                    className="w-full text-left px-4 py-3 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99]"
-                    style={{
-                      background: "rgba(139,92,246,0.06)",
-                      border: "1.5px dashed rgba(139,92,246,0.25)",
-                    }}
-                  >
-                    <p
-                      className="text-[10px] font-bold uppercase tracking-widest mb-1"
-                      style={{ color: "#7C3AED" }}
-                    >
-                      Tap to answer
-                    </p>
-                    <p className="text-sm text-muted-foreground italic">{gp}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Prompt cards */}
-            <div className="space-y-2">
-              {promptCards.map((card, idx) => (
-                <motion.div
-                  // biome-ignore lint/suspicious/noArrayIndexKey: prompt cards are user-ordered
-                  key={`prompt-${idx}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl p-4 relative"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #f3f0ff 0%, #fce7f3 100%)",
-                    border: "1.5px solid rgba(139,92,246,0.2)",
-                  }}
-                >
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
-                    style={{ color: "#7C3AED" }}
-                  >
-                    {card.prompt}
-                  </p>
-                  <p className="text-gray-800 text-sm font-medium leading-snug">
-                    {card.answer}
-                  </p>
-                  {editing && (
-                    <button
-                      type="button"
-                      onClick={() => removePromptCard(idx)}
-                      className="absolute top-3 right-3 w-6 h-6 rounded-full bg-black/10 flex items-center justify-center"
-                    >
-                      <X size={12} className="text-gray-500" />
-                    </button>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-
-            <AnimatePresence>
-              {showAddPrompt && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 overflow-hidden"
-                >
-                  <div
-                    className="rounded-2xl p-4 space-y-3"
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <p className="text-sm font-bold text-foreground">
-                      Choose a prompt
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_PROMPTS.filter(
-                        (p) => !promptCards.some((c) => c.prompt === p),
-                      ).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setSelectedPrompt(p)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                            selectedPrompt === p
-                              ? "text-white"
-                              : "text-muted-foreground"
-                          }`}
-                          style={{
-                            background:
-                              selectedPrompt === p
-                                ? gradientStyle
-                                : "rgba(139,92,246,0.08)",
-                            border:
-                              selectedPrompt === p
-                                ? "none"
-                                : "1px solid rgba(139,92,246,0.2)",
-                          }}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                    {selectedPrompt && (
-                      <textarea
-                        value={promptAnswer}
-                        onChange={(e) => setPromptAnswer(e.target.value)}
-                        placeholder="Your answer..."
-                        rows={2}
-                        maxLength={140}
-                        className="w-full px-3 py-2 rounded-xl text-sm bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                      />
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddPrompt(false);
-                          setSelectedPrompt("");
-                          setPromptAnswer("");
-                        }}
-                        className="flex-1 py-2 rounded-xl text-sm font-semibold text-muted-foreground"
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={addPromptCard}
-                        disabled={!selectedPrompt || !promptAnswer.trim()}
-                        className="flex-1 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-                        style={{ background: gradientStyle }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-
-        {/* ─ ABOUT ME ───────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.16 }}
-          className="px-4 mt-3"
-        >
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-sm text-foreground">About Me</h3>
-            </div>
-            {editing ? (
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Write something about yourself..."
-                rows={3}
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                data-ocid="profile.textarea"
-              />
-            ) : (
-              <p className="text-foreground text-sm leading-relaxed">
-                {bio || (
-                  <span className="text-muted-foreground italic">
-                    Tap "Edit Profile" to add a bio...
-                  </span>
-                )}
-              </p>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ─ INTERESTS ────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}
-          className="px-4 mt-3"
-        >
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-sm text-foreground">Interests</h3>
-              {editing && (
-                <span className="text-xs text-muted-foreground">
-                  {interests.length}/6
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(editing ? ALL_INTERESTS : interests).map((tag) => (
-                <button
-                  type="button"
-                  key={tag}
-                  onClick={() => editing && toggleInterest(tag)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    interests.includes(tag)
-                      ? "text-primary neon-border-violet"
-                      : editing
-                        ? "glass-dark text-muted-foreground"
-                        : "glass-dark text-foreground"
-                  }`}
-                  data-ocid={`profile.item.${ALL_INTERESTS.indexOf(tag) + 1}`}
-                >
-                  {tag}
-                </button>
-              ))}
-              {!editing && interests.length === 0 && (
-                <span className="text-xs text-muted-foreground italic">
-                  No interests added yet
-                </span>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ─ SAVE BUTTON (editing mode) ────────────────────────────────── */}
-        {editing && (
-          <div className="px-4 mt-3">
-            <button
-              type="button"
-              onClick={saveProfile}
-              className="w-full py-3.5 rounded-2xl font-bold text-white text-sm"
-              style={{ background: gradientStyle }}
-              data-ocid="profile.save_button"
-            >
-              💾 Save Changes
-            </button>
-          </div>
-        )}
-
-        {/* ─ AVATAR BUILDER ─────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="px-4 mt-3"
-        >
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(124,58,237,0.08), rgba(236,72,153,0.08))",
-              border: "1.5px solid rgba(139,92,246,0.2)",
-            }}
-          >
-            <div className="flex items-center gap-4">
-              <div className="text-4xl select-none">{avatarString}</div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">
-                  Your Avatar
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Used as fallback when no photo is set
-                </p>
-              </div>
-              {editing && (
-                <button
-                  type="button"
-                  onClick={() => setShowAvatarBuilder((p) => !p)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-                  }}
-                  data-ocid="profile.avatar.button"
-                >
-                  {showAvatarBuilder ? "Done" : "Customize"}
-                </button>
-              )}
-            </div>
-            {showAvatarBuilder && editing && avatarData && (
-              <div className="mt-3">
-                <AvatarBuilder value={avatarData} onChange={setAvatarData} />
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ─ PREVIEW PROFILE ───────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22 }}
-          className="px-4 mt-3"
-        >
-          <button
-            type="button"
-            onClick={() => setShowPreviewModal(true)}
-            className="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1.5px solid rgba(255,255,255,0.12)",
-              color: "white",
-            }}
-            data-ocid="profile.secondary_button"
-          >
-            <Eye size={16} />
-            Preview Profile
-          </button>
-        </motion.div>
-
-        {/* ─ SUBSCRIPTION ──────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.24 }}
-          className="px-4 mt-3 space-y-2"
-        >
+          {/* Upgrade CTA */}
           {!user.isPro ? (
-            <>
-              <button
+            <div
+              className="rounded-2xl p-5 text-center relative overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(168,85,247,0.1), rgba(236,72,153,0.1))",
+                border: "1px solid rgba(168,85,247,0.25)",
+                boxShadow: "0 0 32px rgba(168,85,247,0.1)",
+              }}
+            >
+              <div className="text-3xl mb-2">👑</div>
+              <h3 className="font-black text-white text-base mb-1">
+                Unlock the Full Experience
+              </h3>
+              <p className="text-xs text-white/50 mb-4">
+                AI matching, unlimited swipes, boosts &amp; more
+              </p>
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setShowUpgradeModal(true)}
-                className="w-full py-4 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
-                style={{ background: gradientStyle }}
+                className="w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2"
+                style={{
+                  background: gradientStyle,
+                  boxShadow: "0 0 24px rgba(168,85,247,0.4)",
+                }}
                 data-ocid="profile.primary_button"
               >
-                <Zap size={20} /> Upgrade to Pro
-              </button>
+                <Zap size={18} /> Upgrade to Pro
+              </motion.button>
               <button
                 type="button"
                 onClick={() => navigate({ to: "/subscription" })}
-                className="w-full py-3 rounded-2xl font-semibold text-sm text-muted-foreground flex items-center justify-center gap-2 hover:text-foreground transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
+                className="w-full py-2.5 mt-2 rounded-xl text-xs font-semibold text-white/50 flex items-center justify-center gap-1.5"
                 data-ocid="profile.secondary_button"
               >
-                <Star size={16} /> View Plans &amp; Pricing
+                <Star size={13} /> View Plans &amp; Pricing
               </button>
-            </>
+            </div>
           ) : (
             <div
               className="w-full py-3 rounded-2xl text-center text-sm font-bold"
               style={{
-                background: "rgba(234,179,8,0.15)",
-                border: "1px solid rgba(234,179,8,0.3)",
+                background: "rgba(234,179,8,0.1)",
+                border: "1px solid rgba(234,179,8,0.25)",
                 color: "#F59E0B",
               }}
             >
               ⚡ UNIVÈRA Pro Active
             </div>
           )}
+
           <button
             type="button"
             onClick={() => {
               setTutorialDone(false);
               navigate({ to: "/" });
             }}
-            className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-foreground flex items-center gap-3 hover:bg-white/5 transition-colors"
+            className="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white/50 flex items-center gap-3"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
             }}
             data-ocid="profile.secondary_button"
           >
-            <span className="text-base">🎉</span> How it works (replay tutorial)
+            <span className="text-base">🎉</span> Replay tutorial
           </button>
         </motion.div>
 
-        {/* ─ SETTINGS ──────────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════
+            8. SETTINGS
+        ══════════════════════════════════════════════════ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.26 }}
-          className="px-4 mt-3 mb-4"
+          className="px-4 mt-5 mb-4"
         >
+          <h2
+            className="text-sm font-bold mb-3 uppercase tracking-widest"
+            style={{ color: "rgba(255,255,255,0.25)" }}
+          >
+            Settings
+          </h2>
           <div
             className="rounded-2xl overflow-hidden"
             style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.06)",
             }}
           >
-            {/* Settings header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
-              <Settings size={14} className="text-muted-foreground" />
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                Settings
-              </span>
-            </div>
-
-            {/* Online Status */}
-            <div className="px-4 py-3 border-b border-white/5">
-              <p className="text-xs font-semibold text-foreground mb-2">
+            {/* Online status */}
+            <div
+              className="px-4 py-3 border-b"
+              style={{ borderColor: "rgba(255,255,255,0.05)" }}
+            >
+              <p className="text-xs font-semibold text-white/50 mb-2">
                 Online Status
               </p>
               <div className="flex gap-2">
                 {(["online", "away", "offline"] as const).map((status) => (
-                  <button
+                  <motion.button
                     key={status}
                     type="button"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setCurrentUserOnlineStatus(status)}
-                    className="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all"
+                    className="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold"
                     style={{
                       background:
                         currentUserOnlineStatus === status
                           ? status === "online"
-                            ? "rgba(34,197,94,0.2)"
+                            ? "rgba(34,197,94,0.15)"
                             : status === "away"
-                              ? "rgba(245,158,11,0.2)"
-                              : "rgba(107,114,128,0.2)"
-                          : "rgba(255,255,255,0.04)",
+                              ? "rgba(245,158,11,0.15)"
+                              : "rgba(107,114,128,0.15)"
+                          : "rgba(255,255,255,0.03)",
                       border:
                         currentUserOnlineStatus === status
                           ? status === "online"
-                            ? "1px solid rgba(34,197,94,0.5)"
+                            ? "1px solid rgba(34,197,94,0.4)"
                             : status === "away"
-                              ? "1px solid rgba(245,158,11,0.5)"
-                              : "1px solid rgba(107,114,128,0.5)"
-                          : "1px solid rgba(255,255,255,0.08)",
+                              ? "1px solid rgba(245,158,11,0.4)"
+                              : "1px solid rgba(107,114,128,0.4)"
+                          : "1px solid rgba(255,255,255,0.06)",
                       color:
                         currentUserOnlineStatus === status
                           ? status === "online"
@@ -1430,7 +1818,7 @@ export function Profile() {
                             : status === "away"
                               ? "#f59e0b"
                               : "#9ca3af"
-                          : "rgba(255,255,255,0.5)",
+                          : "rgba(255,255,255,0.35)",
                     }}
                     data-ocid={`profile.online_${status}.toggle`}
                   >
@@ -1439,82 +1827,92 @@ export function Profile() {
                       : status === "away"
                         ? "🟡 Away"
                         : "⬤ Offline"}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
 
-            {/* Theme Toggle */}
-            <button
+            {/* Theme toggle */}
+            <motion.button
               type="button"
+              whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+              whileTap={{ scale: 0.99 }}
               onClick={toggleTheme}
-              className="w-full flex items-center justify-between px-4 py-3.5 border-b border-white/5 hover:bg-white/3 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3.5 border-b"
+              style={{ borderColor: "rgba(255,255,255,0.05)" }}
               data-ocid="profile.toggle"
             >
               <div className="flex items-center gap-3">
                 {theme === "dark" ? (
-                  <Moon size={16} className="text-muted-foreground" />
+                  <Moon size={16} style={{ color: "rgba(255,255,255,0.4)" }} />
                 ) : (
-                  <Sun size={16} className="text-muted-foreground" />
+                  <Sun size={16} style={{ color: "rgba(255,255,255,0.4)" }} />
                 )}
-                <span className="text-sm text-foreground">
+                <span className="text-sm text-white">
                   {theme === "dark" ? "Dark Mode" : "Light Mode"}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-white/30">
                 {theme === "dark" ? "Switch to Light" : "Switch to Dark"}
               </span>
-            </button>
+            </motion.button>
 
             {/* Help Center */}
-            <button
+            <motion.button
               type="button"
-              className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-white/5 hover:bg-white/3 transition-colors"
+              whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 border-b"
+              style={{ borderColor: "rgba(255,255,255,0.05)" }}
               onClick={() => navigate({ to: "/help" })}
               data-ocid="profile.help.link"
             >
-              <HelpCircle size={16} className="text-primary" />
-              <span className="text-sm text-foreground">Help Center</span>
-            </button>
+              <HelpCircle size={16} style={{ color: "#a855f7" }} />
+              <span className="text-sm text-white">Help Center</span>
+            </motion.button>
 
-            {/* Admin Panel (conditional) */}
+            {/* Admin (conditional) */}
             {(user as any).isAdmin && (
-              <button
+              <motion.button
                 type="button"
-                className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-white/5 hover:bg-white/3 transition-colors"
+                whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.05)" }}
                 onClick={() => navigate({ to: "/admin" })}
                 data-ocid="profile.admin.link"
               >
-                <Shield size={16} className="text-primary" />
-                <span className="text-sm text-foreground">Admin Panel</span>
-              </button>
+                <Shield size={16} style={{ color: "#a855f7" }} />
+                <span className="text-sm text-white">Admin Panel</span>
+              </motion.button>
             )}
 
             {/* Logout */}
-            <button
+            <motion.button
               type="button"
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-500/5 transition-colors"
+              whileHover={{ backgroundColor: "rgba(239,68,68,0.05)" }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full flex items-center gap-3 px-4 py-3.5"
               onClick={() => {
                 setUser(null);
                 navigate({ to: "/" });
               }}
               data-ocid="profile.delete_button"
             >
-              <LogOut size={16} className="text-destructive" />
-              <span className="text-sm text-destructive font-semibold">
+              <LogOut size={16} className="text-red-400" />
+              <span className="text-sm font-semibold text-red-400">
                 Log Out
               </span>
-            </button>
+            </motion.button>
           </div>
         </motion.div>
 
-        {/* ─ FOOTER ────────────────────────────────────────────────────── */}
+        {/* Footer */}
         <div className="px-4 pb-6 text-center">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
             © {new Date().getFullYear()}. Built with ❤️ using{" "}
             <a
               href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              className="text-primary hover:underline"
+              className="hover:underline"
+              style={{ color: "#a855f7" }}
               target="_blank"
               rel="noreferrer"
             >
@@ -1533,14 +1931,13 @@ export function Profile() {
         rewardType={nextRewardType}
       />
 
-      {/* Selfie Verification */}
       <SelfieVerification
         isOpen={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}
         onVerified={verifyProfile}
       />
 
-      {/* ─ PREVIEW PROFILE MODAL ────────────────────────────────────────── */}
+      {/* Preview Modal */}
       <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
         <DialogContent
           className="max-w-xs mx-auto p-0 overflow-hidden rounded-3xl"
@@ -1552,7 +1949,6 @@ export function Profile() {
             </DialogTitle>
           </DialogHeader>
           <div className="px-5 pb-5 pt-3">
-            {/* Swipe card preview */}
             <div
               className="relative w-full rounded-2xl overflow-hidden shadow-xl"
               style={{ aspectRatio: "3/4" }}
@@ -1602,7 +1998,7 @@ export function Profile() {
                       <span
                         key={tag}
                         className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
-                        style={{ background: "rgba(255,255,255,0.2)" }}
+                        style={{ background: "rgba(168,85,247,0.4)" }}
                       >
                         {tag}
                       </span>
@@ -1611,23 +2007,22 @@ export function Profile() {
                 )}
               </div>
             </div>
-
-            {/* Bio preview */}
             {bio && (
               <p className="mt-3 text-sm text-foreground text-center leading-snug">
                 {bio}
               </p>
             )}
-
-            <button
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setShowPreviewModal(false)}
               className="w-full mt-4 py-2.5 rounded-xl font-bold text-white text-sm"
               style={{ background: gradientStyle }}
               data-ocid="profile.close_button"
             >
               Done
-            </button>
+            </motion.button>
           </div>
         </DialogContent>
       </Dialog>
