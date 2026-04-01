@@ -289,14 +289,12 @@ function SwipeCard({
   profile,
   onSwipe,
   isTop,
-  onView,
   superLikeStamp,
   hasAIAccess,
 }: {
   profile: (typeof PROFILES)[0];
   onSwipe: (dir: "left" | "right" | "up") => void;
   isTop: boolean;
-  onView: () => void;
   superLikeStamp?: boolean;
   hasAIAccess: boolean;
 }) {
@@ -437,22 +435,6 @@ function SwipeCard({
 
             {/* Bottom info section */}
             <div className="absolute bottom-0 left-0 right-0 p-5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView();
-                }}
-                className="mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  border: "1px solid rgba(255,255,255,0.3)",
-                  color: "#fff",
-                }}
-                data-ocid="swipe.secondary_button"
-              >
-                <Eye size={12} /> View Profile
-              </button>
               <div className="flex items-end justify-between mb-1">
                 <h2
                   className="font-display text-3xl font-black text-white"
@@ -768,12 +750,6 @@ export function SwipeDeck() {
                       profile={profile}
                       onSwipe={handleSwipe}
                       isTop={isTop}
-                      onView={() =>
-                        navigate({
-                          to: "/profile/$id",
-                          params: { id: profile.id },
-                        })
-                      }
                       superLikeStamp={superLikeStampId === profile.id}
                       hasAIAccess={hasAIAccess}
                     />
@@ -854,7 +830,7 @@ export function SwipeDeck() {
               }}
               data-ocid="swipe.secondary_button"
             >
-              <Play size={10} fill="white" /> +5 Free Likes via Ads
+              <Play size={10} fill="white" /> +2 Free Likes via Ads
             </button>
           </div>
         )}

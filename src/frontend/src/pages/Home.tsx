@@ -614,21 +614,6 @@ export function Home() {
               >
                 <Heart size={15} fill="white" /> Like
               </motion.button>
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.94 }}
-                onClick={() => setViewingProfile(heroProfile)}
-                className="flex-1 py-2.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-1.5"
-                style={{
-                  background: "rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                  color: "#fff",
-                }}
-                data-ocid="home.secondary_button"
-              >
-                👁 View Profile
-              </motion.button>
             </div>
           </div>
 
