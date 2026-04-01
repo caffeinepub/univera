@@ -8,6 +8,7 @@ import {
   Loader2,
   LogOut,
   Moon,
+  MoreVertical,
   Play,
   Plus,
   RefreshCw,
@@ -37,6 +38,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "../components/ui/sheet";
 import { useApp } from "../context/AppContext";
 import { AVAILABLE_PROMPTS } from "../data/mockData";
 import { useUploadPhoto } from "../hooks/useUploadPhoto";
@@ -127,6 +134,7 @@ export function Profile() {
   } = useApp();
   const { uploadFile } = useUploadPhoto();
   const [editing, setEditing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [bio, setBio] = useState(user?.bio ?? "");
   const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -401,6 +409,7 @@ export function Profile() {
             style={{
               background:
                 "linear-gradient(to bottom, rgba(88,28,135,0.5) 0%, rgba(157,23,77,0.35) 40%, rgba(154,52,18,0.2) 70%, rgba(10,10,15,1) 100%)",
+              pointerEvents: "none",
             }}
           />
 
@@ -503,6 +512,20 @@ export function Profile() {
                   <Edit2 size={13} /> Edit
                 </>
               )}
+            </motion.button>
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setMenuOpen(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                backdropFilter: "blur(12px)",
+              }}
+              data-ocid="profile.open_modal_button"
+            >
+              <MoreVertical size={16} />
             </motion.button>
           </div>
 
@@ -1924,6 +1947,134 @@ export function Profile() {
 
       <BottomNav />
       <UpgradeModal />
+
+      {/* 3-dot Bottom Sheet Menu */}
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-3xl border-0 px-0 pb-safe"
+          style={{ background: "#0a0a0f", maxHeight: "60vh" }}
+        >
+          <SheetHeader className="px-6 pb-4">
+            <SheetTitle className="text-white text-base font-bold">
+              Menu
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col px-4 gap-1">
+            {/* Edit Profile */}
+            <button
+              type="button"
+              className="flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl transition-all text-left"
+              style={{ background: "rgba(255,255,255,0.04)" }}
+              onClick={() => {
+                setEditing(true);
+                setMenuOpen(false);
+              }}
+              data-ocid="profile.menu.edit_button"
+            >
+              <Edit2 size={18} style={{ color: "#a855f7" }} />
+              <span className="flex-1 text-sm font-medium text-white">
+                Edit Profile
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 18 }}>
+                ›
+              </span>
+            </button>
+            {/* Subscription */}
+            <button
+              type="button"
+              className="flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl transition-all text-left"
+              style={{ background: "rgba(255,255,255,0.04)" }}
+              onClick={() => {
+                navigate({ to: "/subscription" });
+                setMenuOpen(false);
+              }}
+              data-ocid="profile.menu.subscription_button"
+            >
+              <Sparkles size={18} style={{ color: "#f97316" }} />
+              <span className="flex-1 text-sm font-medium text-white">
+                Subscription
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 18 }}>
+                ›
+              </span>
+            </button>
+            {/* Dark / Light Mode */}
+            <button
+              type="button"
+              className="flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl transition-all text-left"
+              style={{ background: "rgba(255,255,255,0.04)" }}
+              onClick={() => {
+                toggleTheme();
+                setMenuOpen(false);
+              }}
+              data-ocid="profile.menu.toggle"
+            >
+              {theme === "dark" ? (
+                <Moon size={18} style={{ color: "#818cf8" }} />
+              ) : (
+                <Sun size={18} style={{ color: "#f59e0b" }} />
+              )}
+              <span className="flex-1 text-sm font-medium text-white">
+                {theme === "dark"
+                  ? "Switch to Light Mode"
+                  : "Switch to Dark Mode"}
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 18 }}>
+                ›
+              </span>
+            </button>
+            {/* Help Center */}
+            <button
+              type="button"
+              className="flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl transition-all text-left"
+              style={{ background: "rgba(255,255,255,0.04)" }}
+              onClick={() => {
+                navigate({ to: "/help" });
+                setMenuOpen(false);
+              }}
+              data-ocid="profile.menu.help_button"
+            >
+              <HelpCircle size={18} style={{ color: "#22d3ee" }} />
+              <span className="flex-1 text-sm font-medium text-white">
+                Help Center
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 18 }}>
+                ›
+              </span>
+            </button>
+            {/* Logout */}
+            <div
+              style={{
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                marginTop: 4,
+                paddingTop: 4,
+              }}
+            >
+              <button
+                type="button"
+                className="flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl transition-all text-left"
+                style={{ background: "rgba(239,68,68,0.06)" }}
+                onClick={() => {
+                  setUser(null);
+                  navigate({ to: "/" });
+                  setMenuOpen(false);
+                }}
+                data-ocid="profile.menu.logout_button"
+              >
+                <LogOut size={18} style={{ color: "#f87171" }} />
+                <span
+                  className="flex-1 text-sm font-medium"
+                  style={{ color: "#f87171" }}
+                >
+                  Logout
+                </span>
+              </button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <RewardedAdModal
         isOpen={showRewardedAd}
         onClose={() => setShowRewardedAd(false)}

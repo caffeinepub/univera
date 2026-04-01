@@ -167,7 +167,7 @@ export function Chat() {
     PROFILES.find((p) => p.id === match?.profileId) ?? PROFILES[2];
 
   // Determine if this is a demo chat (use mock messages) or real (use backend)
-  const isDemo = profile.isDemo ?? true;
+  const isDemo = profile.isDemo ?? false;
 
   // ─── Message state ─────────────────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>(() =>
@@ -480,7 +480,7 @@ export function Chat() {
           <DropdownMenuContent
             align="end"
             className="rounded-2xl border-border/50"
-            style={{ background: "#1a1030", minWidth: "180px" }}
+            style={{ background: "#1a1030", minWidth: "180px", zIndex: 9999 }}
           >
             <DropdownMenuItem
               onClick={() => setReportOpen(true)}

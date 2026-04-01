@@ -27,6 +27,13 @@ export interface Profile {
   personality?: string;
   isVerified?: boolean;
   isDemo?: boolean;
+  posts?: {
+    id: string;
+    image: string;
+    caption: string;
+    likes: number;
+    comments: { user: string; text: string }[];
+  }[];
 }
 
 export interface Match {
@@ -109,6 +116,32 @@ export const PROFILES: Profile[] = [
     distance: "2.1 km",
     onlineStatus: "online",
     compatibility: 94,
+    posts: [
+      {
+        id: "1-1",
+        image: "https://picsum.photos/seed/maya1/400/400",
+        caption: "chai time is sacred time no cap",
+        likes: 87,
+        comments: [
+          { user: "Aryan", text: "fr though" },
+          { user: "Priya", text: "bestie energy" },
+        ],
+      },
+      {
+        id: "1-2",
+        image: "https://picsum.photos/seed/maya2/400/400",
+        caption: "hackathon vibes at 3am -- zero sleep, maximum grind",
+        likes: 143,
+        comments: [{ user: "Rohan", text: "we live for this" }],
+      },
+      {
+        id: "1-3",
+        image: "https://picsum.photos/seed/maya3/400/400",
+        caption: "campus sunsets always hit different",
+        likes: 62,
+        comments: [{ user: "Karan", text: "incredible shot" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -164,6 +197,29 @@ export const PROFILES: Profile[] = [
     distance: "0.8 km",
     onlineStatus: "online",
     compatibility: 87,
+    posts: [
+      {
+        id: "2-1",
+        image: "https://picsum.photos/seed/aryan1/400/400",
+        caption: "court sessions after lectures slap harder than any gym",
+        likes: 119,
+        comments: [{ user: "Rohan", text: "bro is built different" }],
+      },
+      {
+        id: "2-2",
+        image: "https://picsum.photos/seed/aryan2/400/400",
+        caption: "pitch deck done. investor mindset activated",
+        likes: 98,
+        comments: [{ user: "Maya", text: "love to see it!" }],
+      },
+      {
+        id: "2-3",
+        image: "https://picsum.photos/seed/aryan3/400/400",
+        caption: "manali solo trip recap 10/10 would recommend",
+        likes: 76,
+        comments: [{ user: "Priya", text: "jealous istg" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -214,6 +270,29 @@ export const PROFILES: Profile[] = [
     distance: "1.4 km",
     onlineStatus: "offline",
     compatibility: 91,
+    posts: [
+      {
+        id: "3-1",
+        image: "https://picsum.photos/seed/priya1/400/400",
+        caption: "new palette just dropped, took 3 days and i love it",
+        likes: 54,
+        comments: [{ user: "Sara", text: "absolutely stunning" }],
+      },
+      {
+        id: "3-2",
+        image: "https://picsum.photos/seed/priya2/400/400",
+        caption: "bff walks over therapy (both are good tho lol)",
+        likes: 72,
+        comments: [{ user: "Aisha", text: "this is so true" }],
+      },
+      {
+        id: "3-3",
+        image: "https://picsum.photos/seed/priya3/400/400",
+        caption: "design presentation nailed it -- sleep deprived but thriving",
+        likes: 41,
+        comments: [{ user: "Aryan", text: "legend" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -270,6 +349,29 @@ export const PROFILES: Profile[] = [
     distance: "3.2 km",
     onlineStatus: "online",
     compatibility: 78,
+    posts: [
+      {
+        id: "4-1",
+        image: "https://picsum.photos/seed/rohan1/400/400",
+        caption: "robot arm finally works after 40 hours no chill just grind",
+        likes: 131,
+        comments: [{ user: "Maya", text: "this is insane!!" }],
+      },
+      {
+        id: "4-2",
+        image: "https://picsum.photos/seed/rohan2/400/400",
+        caption: "5am cycling before the city wakes up -- unmatched peace",
+        likes: 88,
+        comments: [{ user: "Karan", text: "respect" }],
+      },
+      {
+        id: "4-3",
+        image: "https://picsum.photos/seed/rohan3/400/400",
+        caption: "gaming night plus rain outside equals peak existence",
+        likes: 67,
+        comments: [{ user: "Priya", text: "cozy" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -321,6 +423,29 @@ export const PROFILES: Profile[] = [
     distance: "0.5 km",
     onlineStatus: "online",
     compatibility: 85,
+    posts: [
+      {
+        id: "5-1",
+        image: "https://picsum.photos/seed/aisha1/400/400",
+        caption: "moot court prep -- arguing for fun since forever",
+        likes: 93,
+        comments: [{ user: "Maya", text: "future lawyer" }],
+      },
+      {
+        id: "5-2",
+        image: "https://picsum.photos/seed/aisha2/400/400",
+        caption: "library at midnight bc where else would i be lol",
+        likes: 58,
+        comments: [{ user: "Rohan", text: "the grind never stops" }],
+      },
+      {
+        id: "5-3",
+        image: "https://picsum.photos/seed/aisha3/400/400",
+        caption: "book club recs hitting different this semester, 7 books in",
+        likes: 45,
+        comments: [{ user: "Sara", text: "send the list!!!" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -376,6 +501,30 @@ export const PROFILES: Profile[] = [
     distance: "4.1 km",
     onlineStatus: "offline",
     compatibility: 82,
+    posts: [
+      {
+        id: "6-1",
+        image: "https://picsum.photos/seed/zara1/400/400",
+        caption: "campus photography walk -- found some magical corners today",
+        likes: 104,
+        comments: [{ user: "Priya", text: "these shots are amazing" }],
+      },
+      {
+        id: "6-2",
+        image: "https://picsum.photos/seed/zara2/400/400",
+        caption: "new blog post is up -- wrote about student life honestly",
+        likes: 77,
+        comments: [{ user: "Aisha", text: "such a good read!" }],
+      },
+      {
+        id: "6-3",
+        image: "https://picsum.photos/seed/zara3/400/400",
+        caption:
+          "golden hour with my favorite people -- grateful for this crew",
+        likes: 89,
+        comments: [{ user: "Aryan", text: "the vibes" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -432,6 +581,30 @@ export const PROFILES: Profile[] = [
     distance: "1.9 km",
     onlineStatus: "online",
     compatibility: 88,
+    posts: [
+      {
+        id: "7-1",
+        image: "https://picsum.photos/seed/sara1/400/400",
+        caption: "6ft canvas done at 2am -- the muse does not follow schedules",
+        likes: 122,
+        comments: [{ user: "Priya", text: "QUEEN" }],
+      },
+      {
+        id: "7-2",
+        image: "https://picsum.photos/seed/sara2/400/400",
+        caption:
+          "indie gallery find of the year -- tucked in an alley near campus",
+        likes: 68,
+        comments: [{ user: "Maya", text: "take me there!!" }],
+      },
+      {
+        id: "7-3",
+        image: "https://picsum.photos/seed/sara3/400/400",
+        caption: "cooking for 10 was chaos but also kind of my love language",
+        likes: 53,
+        comments: [{ user: "Aisha", text: "bestie fed the whole block" }],
+      },
+    ],
     isDemo: true,
   },
   {
@@ -483,6 +656,30 @@ export const PROFILES: Profile[] = [
     distance: "2.7 km",
     onlineStatus: "away",
     compatibility: 76,
+    posts: [
+      {
+        id: "8-1",
+        image: "https://picsum.photos/seed/karan1/400/400",
+        caption:
+          "campus dj set went off last night -- people were actually vibing",
+        likes: 137,
+        comments: [{ user: "Aryan", text: "bro killed it" }],
+      },
+      {
+        id: "8-2",
+        image: "https://picsum.photos/seed/karan2/400/400",
+        caption: "new track in progress -- drop incoming soon",
+        likes: 96,
+        comments: [{ user: "Sara", text: "cannot wait" }],
+      },
+      {
+        id: "8-3",
+        image: "https://picsum.photos/seed/karan3/400/400",
+        caption: "sneaker collection getting out of hand but make it aesthetic",
+        likes: 74,
+        comments: [{ user: "Rohan", text: "respect the fit" }],
+      },
+    ],
     isDemo: true,
     isPro: true,
   },
