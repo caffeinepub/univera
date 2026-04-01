@@ -1,47 +1,46 @@
-# UNIVÈRA — Stories, Home Tab, Edit Profile Fix, Swipe Changes
+# Univera — Profile Page UI/UX Hinge Redesign
 
 ## Current State
-- 4-tab bottom nav: Swipe (/app), Likes (/matches), Chat (/chat/:id), Profile (/profile)
-- /home route exists but is an old unused Home.tsx (Netflix-style, deprecated)
-- Profile.tsx has Edit button (line 319) with `onClick={() => setEditing(!editing)}` — currently unresponsive (likely a z-index/overlay or event bubble issue)
-- SwipeDeck.tsx has 3 action buttons: Pass, Super Like, Like
-- No stories feature exists
-- consumeSuperLike() and superLikesLeft exposed in AppContext
-- Demo profiles have 6 photos each (photos[] array in mockData)
+The Profile page (`src/frontend/src/pages/Profile.tsx`) exists at ~1272 lines. It has:
+- A small edit toggle in the header (easy to miss)
+- Profile completion bar
+- Verification banner
+- A photo grid (functional but not visually engaging)
+- Prompts section (already wired)
+- Interests as tags
+- Bio field
+- Avatar builder, selfie verification, boost button
+- Help Center, Admin Panel, Logout buttons scattered in the main flow
+- Online status toggle
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Stories backend**: createStory, getActiveStories, markStoryViewed, deleteStory, getStoryViewers Motoko functions
-- **Home tab** (5th tab in BottomNav): path /home-feed, icon = Compass or Home
-  - Top: horizontal stories row (circular avatars, gradient ring = new, grey ring = viewed)
-  - Below: vertical feed of all demo profiles, each showing all 6 photos as scrollable cards with per-photo Super Like (rose reaction) button
-- **StoryViewer component**: fullscreen viewer, tap right/left nav, 5s auto-advance (images), video full duration, mute toggle, viewer count, delete option (owner), story reply input
-- **StoryUploader component**: photo/video file picker (max 10s video, 5MB), Canvas API filters (brightness/contrast/blur/warm), text overlay, location tag, YouTube music search via IFrame API, upload to blob-storage
-- **Stories row** also accessible from Swipe tab header (small camera/story icon)
+- Large hero profile header: full-width rounded photo + name/age/course overlay + verified badge + prominent "Edit Profile" button
+- 2x3 photo grid section with add/delete/reorder controls; empty state CTA "Add Photos"
+- Hinge-style prompts section with 3 default prompts ("My simple pleasure is...", "Dating me is like...", "Biggest green flag...") editable inline
+- "Preview Profile" button that opens swipe card UI modal
+- Actionable profile completion tips ("Add photos to get more matches") as a dismissible card
+- Settings/Utility section at the bottom: Help Center, Admin Panel, Logout grouped cleanly
+- Smooth card layout animations (framer-motion)
 
 ### Modify
-- **BottomNav**: add 5th tab "Home" pointing to /home-feed between Swipe and Likes
-- **Profile.tsx edit button**: trace and fix onClick — ensure no overlapping element is intercepting the click, ensure setEditing(true) triggers properly for both demo and real accounts
-- **SwipeDeck.tsx**: remove Super Like button from action bar, keep only ❌ Pass and ❤️ Like
-- **AppContext**: add stories state (storiesMap, addStory, deleteStory, markViewed), keep consumeSuperLike for Home feed use
-- **App.tsx router**: add /home-feed route pointing to new HomeFeed page
-- **Home.tsx**: completely replace with new HomeFeed component
+- Profile header: replace small header with a large hero photo card with gradient overlay, name/age/course text, verified badge, and a clear visible "Edit Profile" CTA button
+- Interests: already shown as chips/tags — keep but clean up spacing
+- Edit mode: make it a clear full-width button rather than a tiny icon in header
+- Move Help Center / Admin Panel / Logout to a bottom "Settings" card section
+- Completion tips: convert to actionable card with specific tips, not just a progress bar
 
 ### Remove
-- Super Like button from SwipeDeck action bar
-- Old Netflix-style Home.tsx content
+- Help Center / Admin / Logout from scattered positions — consolidate to bottom settings section
+- Excessive empty space between sections
 
 ## Implementation Plan
-1. Generate Motoko backend with stories CRUD (createStory, getActiveStories, markStoryViewed, deleteStory, getStoryViewers)
-2. Fix Profile.tsx edit button — wrap in stopPropagation, verify no CSS pointer-events blocking, ensure setEditing toggles correctly
-3. Remove super like from SwipeDeck action bar (keep pass + like only)
-4. Build HomeFeed page:
-   - Stories row at top (horizontal scroll, demo + real user stories)
-   - Profile feed below (each profile card shows all 6 photos with Super Like per photo)
-5. Build StoryViewer component (fullscreen, tap nav, auto-advance, mute, viewers, delete, reply)
-6. Build StoryUploader component (file pick, Canvas filters, text/location, YouTube music search)
-7. Add stories row/icon to SwipeDeck header
-8. Update BottomNav with 5th Home tab
-9. Add /home-feed route in router
-10. Wire stories state in AppContext
+1. Redesign the top section as a large hero photo card (aspect-ratio 3:4, rounded-3xl, gradient overlay at bottom) showing name, age, major, verified badge, and an "Edit Profile" button overlaid
+2. Below hero: Profile Completion card with actionable tips (icon + text per tip)
+3. Photos Section: 2x3 grid with add/delete/replace controls; empty state with upload CTA
+4. Prompts Section: 3 Hinge-style prompt cards, each editable on tap; add new prompt flow
+5. About + Interests: bio text + interest chips — compact, no wasted space
+6. Preview Profile: full-width button that opens a modal showing the swipe card view of the user's own profile
+7. Settings Section: grouped card at bottom with Help Center, Admin Panel, Logout, Theme toggle, Online Status
+8. Apply framer-motion animations: card entrance, editing transitions, photo add/remove
