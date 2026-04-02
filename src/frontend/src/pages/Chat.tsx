@@ -155,7 +155,6 @@ export function Chat() {
     setChatTheme,
     avatarString,
     loadChatMessages,
-    setShowUpgradeModal,
     sendChatMessage,
   } = useApp();
 
@@ -590,23 +589,25 @@ export function Chat() {
         </div>
       )}
 
-      {/* Icebreakers */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto flex-shrink-0 no-scrollbar">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-          <Sparkles size={12} className="text-primary" /> AI
+      {/* Icebreakers — paid users only */}
+      {hasAIAccess && (
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto flex-shrink-0 no-scrollbar">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+            <Sparkles size={12} className="text-primary" /> AI
+          </div>
+          {ICEBREAKERS.slice(0, 3).map((q, i) => (
+            <button
+              type="button"
+              key={q}
+              onClick={() => send(q)}
+              className="flex-shrink-0 px-3 py-1.5 glass-dark rounded-full text-xs text-foreground hover:bg-primary/20 transition-colors"
+              data-ocid={`chat.item.${i + 1}`}
+            >
+              {q.slice(0, 30)}…
+            </button>
+          ))}
         </div>
-        {ICEBREAKERS.slice(0, 3).map((q, i) => (
-          <button
-            type="button"
-            key={q}
-            onClick={() => send(q)}
-            className="flex-shrink-0 px-3 py-1.5 glass-dark rounded-full text-xs text-foreground hover:bg-primary/20 transition-colors"
-            data-ocid={`chat.item.${i + 1}`}
-          >
-            {q.slice(0, 30)}…
-          </button>
-        ))}
-      </div>
+      )}
 
       {/* Messages */}
       <div
@@ -753,28 +754,7 @@ export function Chat() {
               </button>
             </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 px-1 py-1">
-            <span className="text-xs text-white/40">
-              🤖 Upgrade to Pro to unlock AI features
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setShowUpgradeModal(true);
-              }}
-              className="flex-shrink-0 text-xs font-semibold px-3 py-1 rounded-full"
-              style={{
-                background: "rgba(124,58,237,0.25)",
-                color: "#c4b5fd",
-                border: "1px solid rgba(139,92,246,0.3)",
-              }}
-              data-ocid="chat.primary_button"
-            >
-              Upgrade
-            </button>
-          </div>
-        )}
+        ) : null}
 
         {/* Message input */}
         <div className="flex items-center gap-2">
