@@ -1,46 +1,47 @@
-# Univera — Profile Page UI/UX Hinge Redesign
+# Univera — Edit Profile Fix
 
 ## Current State
-The Profile page (`src/frontend/src/pages/Profile.tsx`) exists at ~1272 lines. It has:
-- A small edit toggle in the header (easy to miss)
-- Profile completion bar
-- Verification banner
-- A photo grid (functional but not visually engaging)
-- Prompts section (already wired)
-- Interests as tags
-- Bio field
-- Avatar builder, selfie verification, boost button
-- Help Center, Admin Panel, Logout buttons scattered in the main flow
-- Online status toggle
+
+`src/frontend/src/pages/Profile.tsx` has full edit mode logic:
+- `editing` state toggles via a top-right "Edit" button in the header
+- Profile picture click opens file upload only when `editing === true`
+- Bio, interests, prompts, captions — all conditionally editable in edit mode
+- Photo grid add/replace/delete buttons appear only in edit mode
+- Save button appears at bottom when `editing === true`
+
+Known bugs:
+1. **Edit button not reliably triggering edit mode** — the header has layered absolute elements (cover image, gradient overlay, floating orbs). Some of these may intercept pointer events even on the Edit button. The overlay div uses `pointerEvents: 'none'` but the cover image behind it may intercept touch events on mobile.
+2. **No visible, always-accessible "Edit Profile" button** — in view mode, there's only a small top-right glass button. Users may not discover or reach it reliably, especially on mobile.
+3. **Profile picture has no edit affordance in view mode** — the camera icon overlay only appears when `editing === true`, meaning there is no persistent visual cue telling users how to change their photo.
+4. **Photo grid empty slots are non-interactive in view mode** — correctly disabled, but grid should remain visually clear about what happens in edit mode.
+5. **Save does not show loading state per-field** — only a toast after `updateUserPhotos` completes.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Large hero profile header: full-width rounded photo + name/age/course overlay + verified badge + prominent "Edit Profile" button
-- 2x3 photo grid section with add/delete/reorder controls; empty state CTA "Add Photos"
-- Hinge-style prompts section with 3 default prompts ("My simple pleasure is...", "Dating me is like...", "Biggest green flag...") editable inline
-- "Preview Profile" button that opens swipe card UI modal
-- Actionable profile completion tips ("Add photos to get more matches") as a dismissible card
-- Settings/Utility section at the bottom: Help Center, Admin Panel, Logout grouped cleanly
-- Smooth card layout animations (framer-motion)
+- A persistent, clearly visible **"Edit Profile"** floating action button or a prominent button below the profile picture that is always visible (not hidden behind overlays)
+- A **camera/pencil edit icon badge** always visible on the profile picture (not just in edit mode), that enters edit mode + opens file picker on tap
+- **Edit mode indicator**: when editing is active, show a colored top banner or border indicating "Editing" mode so users always know their state
+- Photo grid empty slots: when NOT in edit mode, show a subtle "+ Add in edit mode" placeholder; when in edit mode make them tappable and clearly call-to-action
 
 ### Modify
-- Profile header: replace small header with a large hero photo card with gradient overlay, name/age/course text, verified badge, and a clear visible "Edit Profile" CTA button
-- Interests: already shown as chips/tags — keep but clean up spacing
-- Edit mode: make it a clear full-width button rather than a tiny icon in header
-- Move Help Center / Admin Panel / Logout to a bottom "Settings" card section
-- Completion tips: convert to actionable card with specific tips, not just a progress bar
+- Fix the Edit button z-index / pointer-events: ensure the button in the header has explicit `z-index: 50` and `position: relative` so it is always tappable above the cover image and gradient overlays
+- Profile picture: show edit pencil icon badge always (not just when editing), tapping it auto-enters edit mode and opens file picker
+- Bio textarea: auto-focus when edit mode is entered
+- Interest chips: in view mode show selected interests only; in edit mode show all available tags with toggle; no change to existing logic
+- Prompts: ghost prompts should work in both view and edit mode (clicking a ghost prompt auto-enters edit mode)
+- Save button: show spinner during save, disable during upload
+- Cancel button: resets all local state (bio, interests, promptCards, photos) back to `user` values, exits edit mode
 
 ### Remove
-- Help Center / Admin / Logout from scattered positions — consolidate to bottom settings section
-- Excessive empty space between sections
+- No features removed
 
 ## Implementation Plan
-1. Redesign the top section as a large hero photo card (aspect-ratio 3:4, rounded-3xl, gradient overlay at bottom) showing name, age, major, verified badge, and an "Edit Profile" button overlaid
-2. Below hero: Profile Completion card with actionable tips (icon + text per tip)
-3. Photos Section: 2x3 grid with add/delete/replace controls; empty state with upload CTA
-4. Prompts Section: 3 Hinge-style prompt cards, each editable on tap; add new prompt flow
-5. About + Interests: bio text + interest chips — compact, no wasted space
-6. Preview Profile: full-width button that opens a modal showing the swipe card view of the user's own profile
-7. Settings Section: grouped card at bottom with Help Center, Admin Panel, Logout, Theme toggle, Online Status
-8. Apply framer-motion animations: card entrance, editing transitions, photo add/remove
+
+1. **Fix z-index on Edit button** — add `style={{ zIndex: 50, position: 'relative' }}` to the Edit toggle button in the header; ensure no sibling absolute element has higher z-index without `pointer-events: none`
+2. **Always-visible edit affordance on profile picture** — show a small pink camera badge (bottom-right of profile pic) at all times; tapping it calls `setEditing(true)` then `fileInputRef.current?.click()`
+3. **Persistent Edit Profile button** — add a visible "Edit Profile" button row below the stats pills (always in view, not hidden), which toggles edit mode. When in edit mode, show "Save Changes" and "Cancel" buttons in that same row.
+4. **Edit mode banner** — when `editing === true`, show a slim neon top bar "✏️ Editing Profile" so users always know they're in edit mode
+5. **Cancel resets state** — on cancel, restore `bio`, `interests`, `promptCards`, `photos` from `user` object
+6. **Fix photo grid empty slot interaction** — make empty slots always visible; in edit mode they are tappable to open addPhotoInputRef
+7. **Bio auto-focus** — useEffect to focus bio textarea when editing becomes true

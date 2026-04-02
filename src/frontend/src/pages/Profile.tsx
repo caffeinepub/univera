@@ -155,6 +155,7 @@ export function Profile() {
   const [showAvatarBuilder, setShowAvatarBuilder] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [uploadingLabel, setUploadingLabel] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user?.photos && user.photos.length > 0) {
@@ -206,8 +207,14 @@ export function Profile() {
   };
 
   const saveProfile = async () => {
-    setUser({ ...user, bio, interests, promptCards });
-    await handleSaveCaptions();
+    if (saving) return;
+    setSaving(true);
+    try {
+      setUser({ ...user, bio, interests, promptCards });
+      await handleSaveCaptions();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleMainPhotoChange = async (
@@ -468,7 +475,10 @@ export function Profile() {
           />
 
           {/* Top controls */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+          <div
+            className="absolute top-4 left-4 right-4 flex items-center justify-between"
+            style={{ zIndex: 50 }}
+          >
             <motion.button
               type="button"
               whileHover={{ scale: 1.05 }}
@@ -487,7 +497,17 @@ export function Profile() {
               type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setEditing((prev) => !prev)}
+              onClick={() => {
+                if (editing) {
+                  setBio(user?.bio ?? "");
+                  setInterests(user?.interests ?? []);
+                  setPromptCards(user?.promptCards ?? []);
+                  setPhotos(user?.photos ?? []);
+                  setEditing(false);
+                } else {
+                  setEditing(true);
+                }
+              }}
               className="px-4 py-2 rounded-full text-xs font-bold text-white flex items-center gap-1.5"
               style={{
                 background: editing
@@ -500,6 +520,8 @@ export function Profile() {
                 boxShadow: editing
                   ? "0 0 16px rgba(239,68,68,0.2)"
                   : "0 0 16px rgba(168,85,247,0.25)",
+                position: "relative",
+                zIndex: 50,
               }}
               data-ocid="profile.edit_button"
             >
@@ -536,7 +558,6 @@ export function Profile() {
               <motion.div
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => editing && fileInputRef.current?.click()}
                 className="relative w-28 h-28 rounded-full overflow-hidden cursor-pointer"
                 style={{
                   boxShadow:
@@ -563,15 +584,34 @@ export function Profile() {
                 {editing && (
                   <div
                     className="absolute inset-0 flex items-center justify-center"
-                    style={{ background: "rgba(0,0,0,0.5)" }}
+                    style={{ background: "rgba(0,0,0,0.35)" }}
                   >
                     <Camera size={22} className="text-white" />
                   </div>
                 )}
               </motion.div>
+              {/* Always-visible camera badge */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.15 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => {
+                  if (!editing) setEditing(true);
+                  setTimeout(() => fileInputRef.current?.click(), 50);
+                }}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center"
+                style={{
+                  background: "linear-gradient(135deg, #a855f7, #ec4899)",
+                  boxShadow: "0 0 12px rgba(168,85,247,0.6), 0 0 0 2px #0a0a0f",
+                  zIndex: 10,
+                }}
+                data-ocid="profile.upload_button"
+              >
+                <Camera size={14} className="text-white" />
+              </motion.button>
               {/* Online status ring */}
               <div
-                className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
+                className="absolute bottom-1 right-8 w-4 h-4 rounded-full border-2"
                 style={{
                   background: onlineColor,
                   borderColor: "#0a0a0f",
@@ -792,6 +832,121 @@ export function Profile() {
             ))}
           </div>
         </div>
+
+        {/* ══════════════════════════════════════════════════
+            3b. EDIT PROFILE BUTTON ROW (persistent)
+        ══════════════════════════════════════════════════ */}
+        <div className="px-4 mt-4">
+          <AnimatePresence mode="wait">
+            {!editing ? (
+              <motion.button
+                key="edit-profile-btn"
+                type="button"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setEditing(true)}
+                className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2"
+                style={{
+                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                  boxShadow: "0 0 24px rgba(168,85,247,0.35)",
+                  minHeight: 48,
+                }}
+                data-ocid="profile.edit_button"
+              >
+                <Edit2 size={16} /> Edit Profile
+              </motion.button>
+            ) : (
+              <motion.div
+                key="save-cancel-row"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="flex gap-2"
+              >
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={saveProfile}
+                  disabled={saving}
+                  className="flex-1 py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2"
+                  style={{
+                    background: saving
+                      ? "rgba(168,85,247,0.4)"
+                      : "linear-gradient(135deg, #7C3AED, #EC4899)",
+                    boxShadow: "0 0 24px rgba(168,85,247,0.35)",
+                    minHeight: 48,
+                  }}
+                  data-ocid="profile.save_button"
+                >
+                  {saving ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={16} />
+                  )}
+                  {saving ? "Saving..." : "Save Changes"}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setBio(user?.bio ?? "");
+                    setInterests(user?.interests ?? []);
+                    setPromptCards(user?.promptCards ?? []);
+                    setPhotos(user?.photos ?? []);
+                    setEditing(false);
+                  }}
+                  className="px-5 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "rgba(255,255,255,0.7)",
+                    minHeight: 48,
+                  }}
+                  data-ocid="profile.cancel_button"
+                >
+                  <X size={15} /> Cancel
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Edit mode banner ── */}
+        <AnimatePresence>
+          {editing && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mx-4 mt-3"
+            >
+              <div
+                className="px-4 py-2.5 rounded-xl flex items-center gap-2"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(168,85,247,0.18), rgba(236,72,153,0.18))",
+                  border: "1px solid rgba(168,85,247,0.35)",
+                  backdropFilter: "blur(12px)",
+                }}
+              >
+                <span className="text-sm">✏️</span>
+                <span
+                  className="text-xs font-semibold flex-1"
+                  style={{ color: "#d8b4fe" }}
+                >
+                  Editing Profile — tap Save Changes when done
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ══════════════════════════════════════════════════
             4. PROMPTS — PERSONALITY FIRST
@@ -1087,7 +1242,11 @@ export function Profile() {
                   key={tag}
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => editing && toggleInterest(tag)}
+                  onClick={() => {
+                    if (editing) {
+                      toggleInterest(tag);
+                    }
+                  }}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                   style={{
                     background: interests.includes(tag)
@@ -1345,19 +1504,22 @@ export function Profile() {
                   transition={{ delay: i * 0.05 }}
                   whileHover={editing ? { scale: 1.03 } : {}}
                   whileTap={editing ? { scale: 0.97 } : {}}
-                  onClick={() =>
-                    editing ? addPhotoInputRef.current?.click() : undefined
-                  }
+                  onClick={() => {
+                    if (!editing) {
+                      setEditing(true);
+                    } else {
+                      addPhotoInputRef.current?.click();
+                    }
+                  }}
                   className="aspect-[3/4] rounded-2xl flex flex-col items-center justify-center gap-2"
                   style={{
                     background: "rgba(255,255,255,0.015)",
                     border: "1.5px dashed rgba(168,85,247,0.25)",
-                    cursor: editing ? "pointer" : "default",
+                    cursor: "pointer",
                     boxShadow: editing
                       ? "0 0 12px rgba(168,85,247,0.1)"
                       : "none",
                   }}
-                  disabled={!editing}
                 >
                   <motion.div
                     animate={{ scale: [1, 1.08, 1] }}
@@ -1383,7 +1545,7 @@ export function Profile() {
                         : "rgba(255,255,255,0.15)",
                     }}
                   >
-                    {editing ? "Add Photo" : "Empty"}
+                    {editing ? "Add Photo" : "Edit to add"}
                   </span>
                 </motion.button>
               );
@@ -1527,14 +1689,20 @@ export function Profile() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={saveProfile}
+                disabled={saving}
                 className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2"
                 style={{
-                  background: gradientStyle,
+                  background: saving ? "rgba(168,85,247,0.4)" : gradientStyle,
                   boxShadow: "0 0 24px rgba(168,85,247,0.35)",
                 }}
                 data-ocid="profile.save_button"
               >
-                <Sparkles size={15} /> Save Changes
+                {saving ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Sparkles size={15} />
+                )}{" "}
+                {saving ? "Saving..." : "Save Changes"}
               </motion.button>
             </motion.div>
           )}
