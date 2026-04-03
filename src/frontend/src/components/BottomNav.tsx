@@ -16,7 +16,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="glass-dark border-t border-border/50 px-1 py-2 flex justify-around"
+      className="glass-dark border-t border-border/50 px-1 pt-2 flex justify-around flex-shrink-0"
+      style={{
+        paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+      }}
       data-ocid="bottom.nav"
     >
       {tabs.map(({ path, icon: Icon, label }) => {
@@ -33,7 +36,7 @@ export function BottomNav() {
             type="button"
             key={path}
             onClick={() => navigate({ to: path })}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[44px] min-h-[44px] justify-center ${
               isActive
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -41,7 +44,7 @@ export function BottomNav() {
             data-ocid={`bottom.${label.toLowerCase()}.link`}
           >
             <Icon
-              size={20}
+              size={22}
               className={
                 isActive ? "drop-shadow-[0_0_8px_rgba(139,92,246,0.8)]" : ""
               }
