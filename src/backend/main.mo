@@ -44,7 +44,7 @@ actor {
   };
 
   // Send OTP email via Resend API
-  public shared func requestEmailOTP(email : Text) : async { #ok; #error : Text } {
+  public shared func requestEmailOTP(email : Text) : async { #ok : Text; #error : Text } {
     // Validate @dgu.ac.in domain
     if (not email.endsWith(#text "@dgu.ac.in")) {
       return #error("Only DBS Global University students can sign up");
@@ -75,7 +75,7 @@ actor {
         body,
         transform,
       );
-      #ok;
+      #ok otp;
     } catch (_e) {
       #error("Failed to send email. Please try again.");
     };

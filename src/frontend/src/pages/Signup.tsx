@@ -268,6 +268,7 @@ export function Signup() {
   const [email, setEmail] = useState("");
   const [emailOTPInput, setEmailOTPInput] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [emailSimOTP, setEmailSimOTP] = useState("");
   const [emailCooldown, setEmailCooldown] = useState(0);
   const [emailError, setEmailError] = useState("");
   const [sendingOTP, setSendingOTP] = useState(false);
@@ -355,6 +356,7 @@ export function Signup() {
       const result = await (actor as any).requestEmailOTP(email);
       if (result.__kind__ === "ok") {
         setEmailSent(true);
+        if (result.ok) setEmailSimOTP(String(result.ok));
         startCooldown(setEmailCooldown, emailCooldownRef);
       } else {
         setEmailError(result.error || "Failed to send OTP. Please try again.");
@@ -370,7 +372,10 @@ export function Signup() {
     if (emailCooldown > 0) return;
     startCooldown(setEmailCooldown, emailCooldownRef);
     try {
-      if (actor) await (actor as any).requestEmailOTP(email);
+      if (actor) {
+        const res = await (actor as any).requestEmailOTP(email);
+        if (res?.__kind__ === "ok" && res.ok) setEmailSimOTP(String(res.ok));
+      }
     } catch {
       // fire-and-forget, ignore errors silently
     }
@@ -652,6 +657,7 @@ export function Signup() {
             <OTPStep
               title="Verify your university email"
               subtitle={`OTP sent to ${email}`}
+              simOTP={emailSimOTP}
               otpValue={emailOTPInput}
               setOtpValue={setEmailOTPInput}
               onVerify={handleVerifyEmailOTP}
